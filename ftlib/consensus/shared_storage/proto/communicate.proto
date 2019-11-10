@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+message GroupStatusResponse {
+    int32 count = 1;
+}
+
+message GroupStatusRequest {
+}
+
+service Report {
+    rpc GetGroupStatus (GroupStatusRequest) returns (GroupStatusResponse) {
+    }
+}
