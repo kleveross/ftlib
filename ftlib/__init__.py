@@ -33,23 +33,22 @@ class BasicFTLib:
     def initialized(self):
         return self._initialized
 
-    def init(self):
+    def init(self, consensus, framework):
         self.consensus = SharedStorage(self)
         self.framework = DummyNCCL(self)
 
     def _rebuild(self):
         try:
             consensus_result = self.consensus.confirm()
-            if consensus_result:
+            if consensus_result == 'success':
                 self.rank, self.size = self.consensus.get_rank_size()
-            else:
+            if consensus_result == 'skip allreduce':
+                return consensus_result
+            if consensus_result == 'fail':
                 raise Exception('consensus not built')
         except Exception as e:
             logging.warning(str(e))
             return 'abort'
-
-        if consensus_result == 'skip allreduce':
-            return consensus_result
 
         try:
             if_success = self.framework.rebuild(self.rank, self.size)
@@ -69,7 +68,10 @@ class BasicFTLib:
 
         return if_success
 
-    def average_gradients(self, grads):
+    def wait_weights_ready(self, grads=None):
+        return self.allreduce_average(grads)
+
+    def allreduce_average(self, data):
         # if skil_allreduce == True, then average_gradient shouldn't be called
         if self.skip_allreduce:
             return 'no need'

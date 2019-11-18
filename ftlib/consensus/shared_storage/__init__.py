@@ -62,7 +62,7 @@ class SharedStorage(BasicConsensus):
         self._rank = None
 
     def confirm(self, *args, **kwargs):
-        ips, counts, alone = self._io_tool.register_ip(ip_address)
+        ips, counts, alone = self._io_tool.retrieve_ip(ip_address)
 
         # if there is only myself
         if alone and not self._ftlib.skip_allreduce:

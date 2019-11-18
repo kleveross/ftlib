@@ -6,7 +6,7 @@ import time
 import os
 import numpy as np
 from ..basic import BasicFramework
-import fault_tolerant_lib
+from . import fault_tolerant_lib
 
 
 # common utils section
