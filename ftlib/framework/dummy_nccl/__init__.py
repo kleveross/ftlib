@@ -37,6 +37,7 @@ class DummyNCCL(BasicFramework):
                  shared_path='/crystal',
                  filename='nccl_id_file',
                  max_try=30):
+        self.type = 'dummy_NCCL'
         self.grad_sync_timeout = grad_sync_timeout
         self.shared_path = shared_path
         self._nccl_context = fault_tolerant_lib.nccl_context()

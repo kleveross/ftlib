@@ -6,10 +6,10 @@ import threading
 # in the tflib package, user is able to initialize the package
 # with specific consensus method adn framework
 from .consensus.shared_storage import SharedStorage
-from .framework.dummy_nccl import DummyNCCL
 
 
 class BasicFTLib:
+    lock_count = 0
     def __init__(self):
         self._initialized = False
         self.skip_allreduce = False
@@ -25,23 +25,35 @@ class BasicFTLib:
         self.framework = None
 
     def lock(self):
+        logging.debug('trying to lock with lock count: {}'.format(self.lock_count))
         self._lock.acquire()
+        self.lock_count = self.lock_count + 1
+        logging.debug('after look, lock count: {}'.format(self.lock_count))
 
     def unlock(self):
+        logging.debug('trying to unlock with lock count: {}'.format(self.lock_count))
         self._lock.release()
+        self.lock_count = self.lock_count - 1
+        logging.debug('after unlock, lock count: {}'.format(self.lock_count))
 
     def initialized(self):
         return self._initialized
 
     def init(self, consensus, framework):
+        assert framework in ['dummy_NCCL', 'pytorch']
         self.consensus = SharedStorage(self)
-        self.framework = DummyNCCL(self)
+        if framework == 'dummy_NCCL':
+            from .framework.dummy_nccl import DummyNCCL
+            self.framework = DummyNCCL()
+        if framework == 'pytorch':
+            from .framework.pytorch import PyTroch
+            self.framework = PyTroch()
 
     def _rebuild(self):
         try:
             consensus_result = self.consensus.confirm()
             if consensus_result == 'success':
-                self.rank, self.size = self.consensus.get_rank_size()
+                self.rank, self.size, master_addr = self.consensus.get_rank_size(maddr=True)
             if consensus_result == 'skip allreduce':
                 return consensus_result
             if consensus_result == 'fail':
@@ -51,7 +63,10 @@ class BasicFTLib:
             return 'abort'
 
         try:
-            if_success = self.framework.rebuild(self.rank, self.size)
+            if self.framework.type == 'dummy_NCCL':
+                if_success = self.framework.rebuild(self.rank, self.size)
+            if self.framework.type == 'pytorch':
+                if_success = self.framework.rebuild(self.rank, self.size, master_addr=master_addr)
         except Exception as e:
             logging.warning(str(e))
             return 'abort'
@@ -68,10 +83,10 @@ class BasicFTLib:
 
         return if_success
 
-    def wait_weights_ready(self, grads=None):
-        return self.allreduce_average(grads)
+    def wait_weights_ready(self, *args, **kwargs):
+        return self.allreduce_average(*args, **kwargs)
 
-    def allreduce_average(self, data):
+    def allreduce_average(self, *args, **kwargs):
         # if skil_allreduce == True, then average_gradient shouldn't be called
         if self.skip_allreduce:
             return 'no need'
@@ -91,28 +106,30 @@ class BasicFTLib:
         try:
             if self.rank == 0:
                 logging.debug("I'm root and I'm averaging gradient")
-                self._lock.acquire()
+                self.lock()
                 logging.debug("I've locked control")
                 if not self._new_member_join:
                     logging.debug("There is no new member joined")
-                    result = self.framework.grad_sync_done()
-                    self._lock.release()
+                    result = self.framework.grad_sync_done(*args, **kwargs)
+                    self.unlock()
                 else:
                     logging.debug("Ah, there be new member(s) joined")
-                    self._lock.release()
+                    self.unlock()
                     raise Exception("new member joined")
             else:
-                result = self.framework.grad_sync_done()
+                result = self.framework.grad_sync_done(*args, **kwargs)
 
             if result == 'success':
                 self.consensus.average_success()
             else:
-                self.consensus.average_fail()
+                self.consensus.average_failure()
                 raise Exception("nccl allreduce failed")
 
         except Exception as e:
             logging.exception(str(e))
             self._initialized = False
+            if self.lock_count > 0:
+                self.unlock()
             try:
                 logging.info("aborting communicator")
                 self.framework.abort_communicator()
