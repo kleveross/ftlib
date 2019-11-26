@@ -6,6 +6,7 @@ root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
 sys.path.insert(0, os.path.abspath(root_dir))
 
 from ftlib import BasicFTLib
+from ftlib.ftlib_status import *
 
 import logging
 LOGLEVEL = os.environ.get('LOGLEVEL', 'WARNING').upper()
@@ -55,14 +56,14 @@ if __name__ == '__main__':
                 continue
             else:
                 res = ftlib.wait_weights_ready()
-            if res == 'no need':
+            if res == FTAllReduceStatus.NO_NEED:
                 logging.critical(
                     "cannot use average_gradient when there is no need")
                 exit(2)
-            if res == 'success':
+            if res == FTAllReduceStatus.SUCCESS:
                 logging.info("average succeed")
                 dummy_update()
-            if res == 'abort':
+            if res == FTAllReduceStatus.ABORT:
                 logging.info("average failed, abort")
                 continue
 

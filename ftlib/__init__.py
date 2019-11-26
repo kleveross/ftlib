@@ -7,6 +7,10 @@ import threading
 # with specific consensus method adn framework
 from .consensus.shared_storage import SharedStorage
 
+from .consensus.consensus_status import ConsensusStatus
+from .framework.framework_status import FrameworkStatus
+from .ftlib_status import * 
+
 
 class BasicFTLib:
     lock_count = 0
@@ -52,15 +56,15 @@ class BasicFTLib:
     def _rebuild(self):
         try:
             consensus_result = self.consensus.confirm()
-            if consensus_result == 'success':
+            if consensus_result == ConsensusStatus.SUCCESS:
                 self.rank, self.size, master_addr = self.consensus.get_rank_size(maddr=True)
-            if consensus_result == 'skip allreduce':
+            if consensus_result == ConsensusStatus.SKIP_ALLREDUCE:
                 return consensus_result
-            if consensus_result == 'fail':
+            if consensus_result == ConsensusStatus.FAIL:
                 raise Exception('consensus not built')
         except Exception as e:
             logging.warning(str(e))
-            return 'abort'
+            return FTRebuildStatus.ABORT
 
         try:
             if self.framework.type == 'dummy_NCCL':
@@ -69,7 +73,7 @@ class BasicFTLib:
                 if_success = self.framework.rebuild(self.rank, self.size, master_addr=master_addr)
         except Exception as e:
             logging.warning(str(e))
-            return 'abort'
+            return FTRebuildStatus.ABORT
 
         if if_success:
             logging.info('rebuild succeeded')
@@ -89,19 +93,19 @@ class BasicFTLib:
     def allreduce_average(self, *args, **kwargs):
         # if skil_allreduce == True, then average_gradient shouldn't be called
         if self.skip_allreduce:
-            return 'no need'
+            return FTAllReduceStatus.NO_NEED
 
         # if the instance is not initialized, then start rebuild
         # TODO: put rebuild into a try loop?
         if not self._initialized:
             rebuild_result = self._rebuild()
-            if rebuild_result == 'abort':
+            if rebuild_result == FTRebuildStatus.ABORT:
                 return rebuild_result
-            if rebuild_result == 'skip allreduce':
+            if rebuild_result == FTRebuildStatus.SKIP_ALLREDUCE:
                 return rebuild_result
 
         # initialize the result flag for nccl allreduce operation
-        result = 'failed'
+        result = FTAllReduceStatus.FAIL
         # try all reduce
         try:
             if self.rank == 0:
@@ -119,7 +123,7 @@ class BasicFTLib:
             else:
                 result = self.framework.grad_sync_done(*args, **kwargs)
 
-            if result == 'success':
+            if result == FrameworkStatus.SUCCESS:
                 self.consensus.average_success()
             else:
                 self.consensus.average_failure()
@@ -135,6 +139,6 @@ class BasicFTLib:
                 self.framework.abort_communicator()
             except Exception as e:
                 logging.warning(str(e))
-            return 'abort'
+            return FTAllReduceStatus.ABORT
 
-        return 'success'
+        return FTAllReduceStatus.SUCCESS

@@ -12,6 +12,7 @@ import torch
 import torch.distributed as dist
 
 from ..basic import BasicFramework
+from ..framework_status import FrameworkStatus
 
 
 class PyTroch(BasicFramework):
@@ -30,12 +31,17 @@ class PyTroch(BasicFramework):
             model = kwargs['model']
         elif len(args) > 0:
             model = args[0]
-        assert model is not None
-        size = float(dist.get_world_size())
-        for param in model.parameters():
-            dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
-            param.grad.data /= size
-        return 'success'
+        if model is None:
+            return FrameworkStatus.FAIL
+        try:
+            size = float(dist.get_world_size())
+            for param in model.parameters():
+                dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
+                param.grad.data /= size
+        except Exception as e:
+            logging.error(str(e))
+            return FrameworkStatus.FAIL
+        return FrameworkStatus.SUCCESS
 
     def allreduce(self, data, op='MEAN'):
         # torch.distributed.ReduceOp has no option for 'MEAN'

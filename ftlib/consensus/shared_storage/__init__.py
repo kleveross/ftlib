@@ -13,6 +13,7 @@ from .proto import communicate_pb2_grpc
 from ..basic import BasicConsensus
 from .utils import IOTool
 from .master_server import JoinService
+from ..consensus_status import ConsensusStatus
 
 hostname = socket.gethostname()
 ip_address = socket.gethostbyname(hostname)
@@ -70,7 +71,7 @@ class SharedStorage(BasicConsensus):
             self._io_tool.register_ip(ip_address, self._count)
             self._become_root()
             self._ftlib.skip_allreduce = True
-            return 'skip allreduce'
+            return ConsensusStatus.SKIP_ALLREDUCE
 
         if alone and self._ftlib.skip_allreduce:
             # with the test example, this situation shouldn't happen
@@ -105,11 +106,11 @@ class SharedStorage(BasicConsensus):
             self._io_tool.register_ip(ip_address, self._count)
             self._become_root()
             self._ftlib.skip_allreduce = True
-            return 'skip allreduce'
+            return ConsensusStatus.SKIP_ALLREDUCE
 
         if self._ips is None or self._counts is None:
-            return 'fail'
-        return 'success'
+            return ConsensusStatus.FAIL
+        return ConsensusStatus.SUCCESS
 
     def get_rank_size(self, maddr=False):
         ipc_dict = {

@@ -6,6 +6,7 @@ import time
 import os
 import numpy as np
 from ..basic import BasicFramework
+from ..framework_status import FrameworkStatus
 from . import fault_tolerant_lib
 
 
@@ -49,8 +50,8 @@ class DummyNCCL(BasicFramework):
             self._dummy_allreduce()
         except Exception as e:
             logging.warning(str(e))
-            return 'failed'
-        return 'success'
+            return FrameworkStatus.FAIL
+        return FrameworkStatus.SUCCESS
 
     def _dummy_allreduce(self, test_data=np.array(range(10)).astype(np.float)):
         logging.debug("averaging: " + str(test_data))
