@@ -13,6 +13,7 @@ from .proto import communicate_pb2_grpc
 from ..basic import BasicConsensus
 from .utils import IOTool
 from .master_server import JoinService
+from ..consensus_status import ConsensusStatus
 
 hostname = socket.gethostname()
 ip_address = socket.gethostbyname(hostname)
@@ -25,7 +26,7 @@ def rank_assign_scheme(ips, my_ip):
     ] + ips
     all_ips.sort()
 
-    return all_ips.index(my_ip), len(all_ips)
+    return all_ips.index(my_ip), len(all_ips), all_ips[0]
 
 
 def clean_my_ip_file(path, ip):
@@ -40,6 +41,7 @@ def clean_my_ip_file(path, ip):
 
 class SharedStorage(BasicConsensus):
     def __init__(self, ftlib, port=7531, wait_time=5):
+        super(SharedStorage, self).__init__()
         self._port = port
         self._wait_time = wait_time
 
@@ -50,7 +52,7 @@ class SharedStorage(BasicConsensus):
         self._io_tool = IOTool(path=shared_path)
 
         self._join_service = JoinService()
-        self._join_service.set_ftlib(self._ftlib)
+        self._join_service.set_ftlib(self)
 
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
         communicate_pb2_grpc.add_ReportServicer_to_server(
@@ -69,7 +71,7 @@ class SharedStorage(BasicConsensus):
             self._io_tool.register_ip(ip_address, self._count)
             self._become_root()
             self._ftlib.skip_allreduce = True
-            return 'skip allreduce'
+            return ConsensusStatus.SKIP_ALLREDUCE
 
         if alone and self._ftlib.skip_allreduce:
             # with the test example, this situation shouldn't happen
@@ -104,13 +106,13 @@ class SharedStorage(BasicConsensus):
             self._io_tool.register_ip(ip_address, self._count)
             self._become_root()
             self._ftlib.skip_allreduce = True
-            return 'skip allreduce'
+            return ConsensusStatus.SKIP_ALLREDUCE
 
         if self._ips is None or self._counts is None:
-            return 'fail'
-        return 'success'
+            return ConsensusStatus.FAIL
+        return ConsensusStatus.SUCCESS
 
-    def get_rank_size(self):
+    def get_rank_size(self, maddr=False):
         ipc_dict = {
             ip: counter
             for ip, counter in zip(self._ips, self._counts)
@@ -118,7 +120,7 @@ class SharedStorage(BasicConsensus):
         max_count = max(ipc_dict.values())
         assert max_count == self._count
         ips = [ip for ip, count in ipc_dict.items() if count == max_count]
-        rank, size = rank_assign_scheme(ips=ips, my_ip=ip_address)
+        rank, size, master_addr = rank_assign_scheme(ips=ips, my_ip=ip_address)
 
         if rank == 0:
             try:
@@ -135,7 +137,10 @@ class SharedStorage(BasicConsensus):
             else:
                 logging.info("server stops")
 
-        return rank, size
+        if maddr:
+            return rank, size, master_addr
+        else:
+            return rank, size
 
     def average_failure(self):
         pass
