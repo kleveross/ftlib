@@ -25,11 +25,11 @@ The FTLib
 ### API docs
 
 **TODO**
-Please refer the [designs](https://github.com/caicloud/ftlib/tree/master/docs/designs) 
+Please refer to the [design docs](https://github.com/caicloud/ftlib/tree/master/docs/design).
 
 ### Design
 
-* [designs](https://github.com/caicloud/ftlib/tree/master/docs/designs)
+* [Design docs](https://github.com/caicloud/ftlib/tree/master/docs/design)
 
 ### Status
 
@@ -37,7 +37,7 @@ Prototype
 
 ### See also
 
-* [elasticDL](https://github.com/sql-machine-learning/elasticdl/)
+* [ElasticDL](https://github.com/sql-machine-learning/elasticdl/)
 
 ## Getting started
 
