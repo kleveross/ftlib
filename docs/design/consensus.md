@@ -18,8 +18,6 @@ Every time FTLib succeeds or fails to perform collective operations, it will cal
 
 ### 2. BasicConsensus.get_member_list()
 
-### 3. ? BasicConsensus.get_rank_size()
-
 ### 4. BasicConsensus.average_failure()
 
 ### 5. BasicConsensus.average_success()

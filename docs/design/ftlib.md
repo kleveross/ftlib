@@ -37,6 +37,22 @@ Here we assume the third case is or will eventually lead to the second one. Thus
 
 **The next design will have the communication and backward computation overlapped, reducing the overall training time.**
 
+## FTLib Flow
+
+The flow chart below describes how FTLib works internally.
+
+![ftlib_flow](../imgs/ftlib_flow.png)
+
+*Fig 3. The Internal Mechanism of FTLib*
+
+`FTLib._rebuild()` takes 3 steps sequentially:
+
+1. use `Consensus.get_member_list` to get member list (*`get_member_list` will call `confirm` implicitly before returning member list*)
+2. use `RankAssignScheme.get_rank_rand_size` to process member list and get rank and size
+3. use `Framework.rebuild()` to perform necessary actions for re-initialize framework
+
+Any exception in these 3 steps will make `FTLib._rebuild()` return rebuild failure.
+
 ## FTLib APIs
 
 FTLib provides the following APIs for initialization and communication:
@@ -50,7 +66,3 @@ FTLib provides the following APIs for initialization and communication:
 ### 4. FTLib.wait_weights_ready(*args, **kwargs)
 
 ### 5. FTLib.skip_allreduce()
-
-### 6. ? FTLib.broadcast()
-
-### 7. ? FTLib.barrier()
