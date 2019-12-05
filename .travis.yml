@@ -1,0 +1,27 @@
+language: minimal
+
+dist: xenial
+
+addons:
+  apt:
+    packages:
+      - docker-ce
+
+install:
+  - docker version
+
+stages:
+  - tests
+
+jobs:
+  include:
+    - stage: tests
+      name: "Tests"
+      script:
+        - set -e
+        - bash scripts/setup_k8s_env.sh
+
+# Only build on this list of branches
+branches:
+  only:
+  - master
