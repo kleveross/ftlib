@@ -4,9 +4,6 @@ import logging
 import threading
 
 from .consensus.consensus_status import ConsensusStatus
-
-# in the tflib package, user is able to initialize the package
-# with specific consensus method adn framework
 from .consensus.shared_storage import SharedStorage
 from .framework.framework_status import FrameworkStatus
 from .ftlib_status import FTAllReduceStatus, FTRebuildStatus
