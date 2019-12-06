@@ -18,6 +18,9 @@
 
 # FTLib
 
+[![Build Status](https://travis-ci.org/caicloud/ftlib.svg?branch=master)](https://travis-ci.org/caicloud/ftlib)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
+
 ## About the project
 
 The FTLib 
