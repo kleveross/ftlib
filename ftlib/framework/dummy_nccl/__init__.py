@@ -9,7 +9,7 @@ import numpy as np
 
 from ..basic import BasicFramework
 from ..framework_status import FrameworkStatus
-from . import fault_tolerant_lib
+from . import fault_tolerant_lib  # type: ignore
 
 
 # common utils section
