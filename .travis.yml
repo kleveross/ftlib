@@ -6,15 +6,23 @@ addons:
   apt:
     packages:
       - docker-ce
+      - python3-pip
+      - python3-setuptools
 
 install:
   - docker version
+  - pip3 install pre-commit
 
 stages:
+  - precommit
   - tests
 
 jobs:
   include:
+    - stage: precommit
+      name: "Pre-commit Check"
+      script:
+      - pre-commit run --files $(find ftlib test -name '*.py' -print0 | tr '\0' ' ')
     - stage: tests
       name: "Tests"
       script:

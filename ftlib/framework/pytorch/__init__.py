@@ -1,13 +1,13 @@
-__version__ = '0.0.1'
+__version__ = "0.0.1"
 
-__pytorch_version__ = '1.2.0'
+__pytorch_version__ = "1.2.0"
 
 import logging
+import os
 import signal
 import time
-import os
-import numpy as np
 
+import numpy as np
 import torch
 import torch.distributed as dist
 
@@ -16,19 +16,16 @@ from ..framework_status import FrameworkStatus
 
 
 class PyTroch(BasicFramework):
-    def __init__(self,
-                 grad_sync_timeout=10,
-                 max_try=30,
-                 port=12355):
-        self.type = 'pytorch'
+    def __init__(self, grad_sync_timeout=10, max_try=30, port=12355):
+        self.type = "pytorch"
         self.grad_sync_timeout = grad_sync_timeout
         self._max_try = max_try
         self._port = port
 
     def grad_sync_done(self, *args, **kwargs):
         model = None
-        if 'model' in kwargs.keys():
-            model = kwargs['model']
+        if "model" in kwargs.keys():
+            model = kwargs["model"]
         elif len(args) > 0:
             model = args[0]
         if model is None:
@@ -43,12 +40,12 @@ class PyTroch(BasicFramework):
             return FrameworkStatus.FAIL
         return FrameworkStatus.SUCCESS
 
-    def allreduce(self, data, op='MEAN'):
+    def allreduce(self, data, op="MEAN"):
         # torch.distributed.ReduceOp has no option for 'MEAN'
         # so far, we only implemented 'MEAN'
         reduce_op = dist.reduce_op.SUM
         dist.all_reduce(data, op=reduce_op)
-        if op == 'MEAN':
+        if op == "MEAN":
             size = float(dist.get_world_size())
             data /= size
 
@@ -58,17 +55,13 @@ class PyTroch(BasicFramework):
     def barrier(self):
         dist.barrier()
 
-    def rebuild(self, rank, size, master_addr, backend='gloo'):
+    def rebuild(self, rank, size, master_addr, backend="gloo"):
         if rank == 0:
-            os.environ['MASTER_ADDR'] = 'localhost'
+            os.environ["MASTER_ADDR"] = "localhost"
         else:
-            os.environ['MASTER_ADDR'] = str(master_addr)
-        os.environ['MASTER_PORT'] = str(self._port)
-        dist.init_process_group(
-            backend=backend,
-            rank=rank,
-            world_size=size
-        )
+            os.environ["MASTER_ADDR"] = str(master_addr)
+        os.environ["MASTER_PORT"] = str(self._port)
+        dist.init_process_group(backend=backend, rank=rank, world_size=size)
 
         return dist.is_initialized()
 

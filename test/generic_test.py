@@ -1,15 +1,16 @@
+import logging
 import os
 import sys
 import time
 
-root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
-sys.path.insert(0, os.path.abspath(root_dir))
-
 from ftlib import BasicFTLib
 from ftlib.ftlib_status import *
 
-import logging
-LOGLEVEL = os.environ.get('LOGLEVEL', 'WARNING').upper()
+root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
+sys.path.insert(0, os.path.abspath(root_dir))
+
+
+LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
 
 
@@ -35,7 +36,7 @@ def dummy_update():
     time.sleep(0.5)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     logging.info("start!")
 
     epochs = 1
@@ -43,7 +44,7 @@ if __name__ == '__main__':
 
     # initialize the fault-tolerant library with consensus and framework options
     ftlib = BasicFTLib()
-    ftlib.init(consensus='shared_storage', framework='dummy_NCCL')
+    ftlib.init(consensus="shared_storage", framework="dummy_NCCL")
 
     for _ in range(epochs):
         for batch in dl:
@@ -58,7 +59,8 @@ if __name__ == '__main__':
                 res = ftlib.wait_weights_ready()
             if res == FTAllReduceStatus.NO_NEED:
                 logging.critical(
-                    "cannot use average_gradient when there is no need")
+                    "cannot use average_gradient when there is no need"
+                )
                 exit(2)
             if res == FTAllReduceStatus.SUCCESS:
                 logging.info("average succeed")
