@@ -71,7 +71,8 @@ if __name__ == "__main__":
 
     epochs = 1
 
-    # initialize the fault-tolerant library with consensus and framework options
+    # initialize the fault-tolerant library with consensus
+    # and framework options
     ftlib = BasicFTLib()
     ftlib.init(consensus="shared_storage", framework="pytorch")
 
