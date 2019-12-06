@@ -4,11 +4,7 @@ __pytorch_version__ = "1.2.0"
 
 import logging
 import os
-import signal
-import time
 
-import numpy as np
-import torch
 import torch.distributed as dist
 
 from ..basic import BasicFramework

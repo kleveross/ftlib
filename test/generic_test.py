@@ -4,7 +4,7 @@ import sys
 import time
 
 from ftlib import BasicFTLib
-from ftlib.ftlib_status import *
+from ftlib.ftlib_status import FTAllReduceStatus
 
 root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
 sys.path.insert(0, os.path.abspath(root_dir))

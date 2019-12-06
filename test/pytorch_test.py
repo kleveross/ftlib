@@ -1,6 +1,5 @@
 from __future__ import print_function
 
-import argparse
 import logging
 import os
 import sys
@@ -12,10 +11,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
-from torchvision import datasets, transforms
 
 from ftlib import BasicFTLib
-from ftlib.ftlib_status import *
+from ftlib.ftlib_status import FTAllReduceStatus
 
 root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
 sys.path.insert(0, os.path.abspath(root_dir))
@@ -40,6 +38,7 @@ class DummyDataset(torch.utils.data.Dataset):
 train_loader = torch.utils.data.DataLoader(
     DummyDataset(), batch_size=8, shuffle=False
 )
+
 
 # define NN
 class Net(nn.Module):

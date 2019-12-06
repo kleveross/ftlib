@@ -31,7 +31,7 @@ def ip_to_int(s):
 
 
 def rank_assign_scheme(ips, my_ip):
-    all_ips = [my_ip,] + ips
+    all_ips = [my_ip, ] + ips
     all_ips.sort()
     return all_ips.index(my_ip), len(all_ips)
 

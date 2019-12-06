@@ -77,7 +77,8 @@ class SharedStorage(BasicConsensus):
             logging.critical("alone and skip allreduce == true")
             exit(3)
 
-        # from this below, alone == False, which means there is other ip registered on the board
+        # from this below, alone == False, which means there is other
+        # ip registered on the board
 
         # if found self lagging others
         if self._count != 0 and max(counts) > self._count:

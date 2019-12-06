@@ -9,7 +9,7 @@ from .consensus.consensus_status import ConsensusStatus
 # with specific consensus method adn framework
 from .consensus.shared_storage import SharedStorage
 from .framework.framework_status import FrameworkStatus
-from .ftlib_status import *
+from .ftlib_status import FTAllReduceStatus, FTRebuildStatus
 
 
 class BasicFTLib:

@@ -6,10 +6,10 @@ class BasicFramework:
         pass
 
     def grad_sync_done(self, *args, **kwargs):
-        raise NotImplemented
+        raise NotImplementedError
 
     def abort_communicator(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def rebuid(self):
         pass
