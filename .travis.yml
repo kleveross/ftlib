@@ -11,10 +11,16 @@ install:
   - docker version
 
 stages:
+  - precommit
   - tests
 
 jobs:
   include:
+    - stage: precommit
+      name: "Pre-commit Check"
+      script:
+      - docker build -t ftlib:ci -f Dockerfile .
+      - docker run --rm -it -v $PWD:/work -w /work ftlib:ci bash -c "pre-commit run --files $(find ftlib test -name '*.py' -print0 | tr '\0' ' ')"
     - stage: tests
       name: "Tests"
       script:

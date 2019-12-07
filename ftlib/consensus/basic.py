@@ -1,4 +1,4 @@
-__version__ = '0.0.1'
+__version__ = "0.0.1"
 
 
 class BasicConsensus:
@@ -7,10 +7,10 @@ class BasicConsensus:
 
     def confirm(self, *args, **kwargs):
         # should return if there is a consensus
-        raise NotImplemented
+        raise NotImplementedError
 
     def get_rank_size(self):
-        raise NotImplemented
+        raise NotImplementedError
 
     def average_success(self):
         pass

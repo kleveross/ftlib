@@ -1,23 +1,25 @@
-__version__ = '0.0.1'
+__version__ = "0.0.1"
 
 import logging
+import os
 import signal
 import time
-import os
+
 import numpy as np
+
 from ..basic import BasicFramework
 from ..framework_status import FrameworkStatus
-from . import fault_tolerant_lib
+from . import fault_tolerant_lib  # type: ignore
 
 
 # common utils section
 def try_write_file(directory, filename, content):
-    logging.info('writing: {}/{}'.format(directory, filename))
-    with open(os.path.join(directory, filename), 'w') as f:
+    logging.info("writing: {}/{}".format(directory, filename))
+    with open(os.path.join(directory, filename), "w") as f:
         try:
             f.write(content)
         except Exception as e:
-            logging.warning('Error!' + str(e))
+            logging.warning("Error!" + str(e))
         else:
             return True
         return False
@@ -25,7 +27,7 @@ def try_write_file(directory, filename, content):
 
 # handler for timeout
 def handler(signum, frame):
-    print('Signal handler called with signal', signum)
+    print("Signal handler called with signal", signum)
     raise Exception("end of time")
 
 
@@ -33,12 +35,14 @@ signal.signal(signal.SIGALRM, handler)
 
 
 class DummyNCCL(BasicFramework):
-    def __init__(self,
-                 grad_sync_timeout=10,
-                 shared_path='/crystal',
-                 filename='nccl_id_file',
-                 max_try=30):
-        self.type = 'dummy_NCCL'
+    def __init__(
+        self,
+        grad_sync_timeout=10,
+        shared_path="/crystal",
+        filename="nccl_id_file",
+        max_try=30,
+    ):
+        self.type = "dummy_NCCL"
         self.grad_sync_timeout = grad_sync_timeout
         self.shared_path = shared_path
         self._nccl_context = fault_tolerant_lib.nccl_context()
@@ -77,7 +81,7 @@ class DummyNCCL(BasicFramework):
     def _rebuild_as_root(self, rank, size):
         self._nccl_context.generateNCCLID()
         nccl_id_array = self._nccl_context.getNCCLID()
-        nccl_id_str = ','.join([str(x) for x in nccl_id_array])
+        nccl_id_str = ",".join([str(x) for x in nccl_id_array])
 
         assert rank == 0
         try_write_file(self.shared_path, self._nccl_id_filename, nccl_id_str)
@@ -101,11 +105,11 @@ class DummyNCCL(BasicFramework):
             logging.debug("trying to retrieve nccl id")
 
             if os.path.isfile(full_path):
-                with open(full_path, 'r') as f:
+                with open(full_path, "r") as f:
                     nccl_id_str = f.read()
 
             if nccl_id_str is None:
-                logging.warning('cannot get nccl id, wait ...')
+                logging.warning("cannot get nccl id, wait ...")
                 time.sleep(2)
             else:
                 break
@@ -114,8 +118,9 @@ class DummyNCCL(BasicFramework):
         if nccl_id_str is None:
             return False
 
-        nccl_id_array = np.array([int(x) for x in nccl_id_str.split(',')],
-                                 dtype=np.int32)
+        nccl_id_array = np.array(
+            [int(x) for x in nccl_id_str.split(",")], dtype=np.int32
+        )
         self._nccl_context.setNCCLID(nccl_id_array)
 
         logging.info("other rank start communicator init rank")

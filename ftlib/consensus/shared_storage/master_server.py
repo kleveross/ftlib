@@ -1,5 +1,4 @@
-from .proto import communicate_pb2
-from .proto import communicate_pb2_grpc
+from .proto import communicate_pb2, communicate_pb2_grpc
 
 
 class JoinService(communicate_pb2_grpc.ReportServicer):
@@ -12,4 +11,5 @@ class JoinService(communicate_pb2_grpc.ReportServicer):
     def GetGroupStatus(self, request, context):
         self.consensus.new_member_join()
         return communicate_pb2.GroupStatusResponse(
-            count=self.consensus.get_count())
+            count=self.consensus.get_count()
+        )

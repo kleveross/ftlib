@@ -1,19 +1,17 @@
-__version__ = '0.0.1'
+__version__ = "0.0.1"
 
 import logging
 import threading
 
-# in the tflib package, user is able to initialize the package
-# with specific consensus method adn framework
-from .consensus.shared_storage import SharedStorage
-
 from .consensus.consensus_status import ConsensusStatus
+from .consensus.shared_storage import SharedStorage
 from .framework.framework_status import FrameworkStatus
-from .ftlib_status import * 
+from .ftlib_status import FTAllReduceStatus, FTRebuildStatus
 
 
 class BasicFTLib:
     lock_count = 0
+
     def __init__(self):
         self._initialized = False
         self.skip_allreduce = False
@@ -29,61 +27,73 @@ class BasicFTLib:
         self.framework = None
 
     def lock(self):
-        logging.debug('trying to lock with lock count: {}'.format(self.lock_count))
+        logging.debug(
+            "trying to lock with lock count: {}".format(self.lock_count)
+        )
         self._lock.acquire()
         self.lock_count = self.lock_count + 1
-        logging.debug('after look, lock count: {}'.format(self.lock_count))
+        logging.debug("after look, lock count: {}".format(self.lock_count))
 
     def unlock(self):
-        logging.debug('trying to unlock with lock count: {}'.format(self.lock_count))
+        logging.debug(
+            "trying to unlock with lock count: {}".format(self.lock_count)
+        )
         self._lock.release()
         self.lock_count = self.lock_count - 1
-        logging.debug('after unlock, lock count: {}'.format(self.lock_count))
+        logging.debug("after unlock, lock count: {}".format(self.lock_count))
 
     def initialized(self):
         return self._initialized
 
     def init(self, consensus, framework):
-        assert framework in ['dummy_NCCL', 'pytorch']
+        assert framework in ["dummy_NCCL", "pytorch"]
         self.consensus = SharedStorage(self)
-        if framework == 'dummy_NCCL':
+        if framework == "dummy_NCCL":
             from .framework.dummy_nccl import DummyNCCL
+
             self.framework = DummyNCCL()
-        if framework == 'pytorch':
+        if framework == "pytorch":
             from .framework.pytorch import PyTroch
+
             self.framework = PyTroch()
 
     def _rebuild(self):
         try:
             consensus_result = self.consensus.confirm()
             if consensus_result == ConsensusStatus.SUCCESS:
-                self.rank, self.size, master_addr = self.consensus.get_rank_size(maddr=True)
+                (
+                    self.rank,
+                    self.size,
+                    master_addr,
+                ) = self.consensus.get_rank_size(maddr=True)
             if consensus_result == ConsensusStatus.SKIP_ALLREDUCE:
                 return consensus_result
             if consensus_result == ConsensusStatus.FAIL:
-                raise Exception('consensus not built')
+                raise Exception("consensus not built")
         except Exception as e:
             logging.warning(str(e))
             return FTRebuildStatus.ABORT
 
         try:
-            if self.framework.type == 'dummy_NCCL':
+            if self.framework.type == "dummy_NCCL":
                 if_success = self.framework.rebuild(self.rank, self.size)
-            if self.framework.type == 'pytorch':
-                if_success = self.framework.rebuild(self.rank, self.size, master_addr=master_addr)
+            if self.framework.type == "pytorch":
+                if_success = self.framework.rebuild(
+                    self.rank, self.size, master_addr=master_addr
+                )
         except Exception as e:
             logging.warning(str(e))
             return FTRebuildStatus.ABORT
 
         if if_success:
-            logging.info('rebuild succeeded')
+            logging.info("rebuild succeeded")
             self.lock()
             self._initialized = True
             self._new_member_join = False
             self.skip_allreduce = False
             self.unlock()
         else:
-            logging.warning('rebuild failed')
+            logging.warning("rebuild failed")
 
         return if_success
 

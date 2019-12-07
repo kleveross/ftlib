@@ -1,29 +1,27 @@
-__version__ = '0.0.1'
+__version__ = "0.0.1"
 
-import logging
-import socket
-import os
-import time
-import grpc
-from concurrent import futures
 import atexit
+import logging
+import os
+import socket
+import time
+from concurrent import futures
 
-from .proto import communicate_pb2
-from .proto import communicate_pb2_grpc
+import grpc
+
 from ..basic import BasicConsensus
-from .utils import IOTool
-from .master_server import JoinService
 from ..consensus_status import ConsensusStatus
+from .master_server import JoinService
+from .proto import communicate_pb2, communicate_pb2_grpc
+from .utils import IOTool
 
 hostname = socket.gethostname()
 ip_address = socket.gethostbyname(hostname)
-shared_path = '/crystal'
+shared_path = "/crystal"
 
 
 def rank_assign_scheme(ips, my_ip):
-    all_ips = [
-        my_ip,
-    ] + ips
+    all_ips = [my_ip,] + ips  # noqa: E231
     all_ips.sort()
 
     return all_ips.index(my_ip), len(all_ips), all_ips[0]
@@ -34,9 +32,9 @@ def clean_my_ip_file(path, ip):
     try:
         os.remove(my_ip_file)
     except Exception as e:
-        logging.info('Error when cleaning ip file ' + str(e))
+        logging.info("Error when cleaning ip file " + str(e))
     else:
-        logging.info('ip file removed.')
+        logging.info("ip file removed.")
 
 
 class SharedStorage(BasicConsensus):
@@ -56,8 +54,9 @@ class SharedStorage(BasicConsensus):
 
         self._server = grpc.server(futures.ThreadPoolExecutor(max_workers=4))
         communicate_pb2_grpc.add_ReportServicer_to_server(
-            self._join_service, self._server)
-        self._server.add_insecure_port('[::]:{port}'.format(port=self._port))
+            self._join_service, self._server
+        )
+        self._server.add_insecure_port("[::]:{port}".format(port=self._port))
 
         self._count = 0
 
@@ -78,7 +77,8 @@ class SharedStorage(BasicConsensus):
             logging.critical("alone and skip allreduce == true")
             exit(3)
 
-        # from this below, alone == False, which means there is other ip registered on the board
+        # from this below, alone == False, which means there is other
+        # ip registered on the board
 
         # if found self lagging others
         if self._count != 0 and max(counts) > self._count:
@@ -98,7 +98,7 @@ class SharedStorage(BasicConsensus):
                 logging.warning("report join failed")
 
         self._io_tool.register_ip(ip_address, self._count)
-        logging.info('main rebuild routine wait: {}'.format(self._wait_time))
+        logging.info("main rebuild routine wait: {}".format(self._wait_time))
         time.sleep(self._wait_time)
         self._ips, self._counts, alone = self._io_tool.retrieve_ip(ip_address)
 
@@ -114,8 +114,7 @@ class SharedStorage(BasicConsensus):
 
     def get_rank_size(self, maddr=False):
         ipc_dict = {
-            ip: counter
-            for ip, counter in zip(self._ips, self._counts)
+            ip: counter for ip, counter in zip(self._ips, self._counts)
         }
         max_count = max(ipc_dict.values())
         assert max_count == self._count
@@ -150,7 +149,7 @@ class SharedStorage(BasicConsensus):
 
     def new_member_join(self, status=True):
         self._ftlib.lock()
-        logging.info('new member join!')
+        logging.info("new member join!")
         self._ftlib._new_member_join = status
         self._ftlib.skip_allreduce = False
         try:
@@ -158,7 +157,7 @@ class SharedStorage(BasicConsensus):
         except Exception as e:
             logging.info(str(e))
         else:
-            logging.info('gRPC server stops when new member joins')
+            logging.info("gRPC server stops when new member joins")
         self._ftlib.unlock()
 
     def get_count(self):
@@ -177,8 +176,9 @@ class SharedStorage(BasicConsensus):
 
     def _report_join(self, ips):
         for ip in ips:
-            channel = grpc.insecure_channel('{ip}:{port}'.format(
-                ip=ip, port=self._port))
+            channel = grpc.insecure_channel(
+                "{ip}:{port}".format(ip=ip, port=self._port)
+            )
             try:
                 grpc.channel_ready_future(channel).result(timeout=2)
             except Exception as e:
@@ -188,15 +188,16 @@ class SharedStorage(BasicConsensus):
                 stub = communicate_pb2_grpc.ReportStub(channel)
             try:
                 response = stub.GetGroupStatus(
-                    communicate_pb2.GroupStatusRequest(), timeout=2)
+                    communicate_pb2.GroupStatusRequest(), timeout=2
+                )
             except Exception as e:
                 logging.warning(str(e))
             else:
-                logging.info('counter retreived')
+                logging.info("counter retreived")
                 self._count = response.counter
                 self._io_tool.register_ip(ip_address, self._count)
                 return True
-        logging.warning('counter not retreived')
+        logging.warning("counter not retreived")
         self._io_tool.register_ip(ip_address, self._count)
         return False
 
