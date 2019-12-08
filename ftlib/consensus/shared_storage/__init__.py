@@ -66,13 +66,13 @@ class SharedStorage(BasicConsensus):
         ips, counts, alone = self._io_tool.retrieve_ip(ip_address)
 
         # if there is only myself
-        if alone and not self._ftlib.skip_allreduce:
+        if alone and not self._ftlib.skip_allreduce():
             self._io_tool.register_ip(ip_address, self._count)
             self._become_root()
-            self._ftlib.skip_allreduce = True
+            self._ftlib._skip_allreduce = True
             return ConsensusStatus.SKIP_ALLREDUCE
 
-        if alone and self._ftlib.skip_allreduce:
+        if alone and self._ftlib.skip_allreduce():
             # with the test example, this situation shouldn't happen
             logging.critical("alone and skip allreduce == true")
             exit(3)
@@ -102,10 +102,10 @@ class SharedStorage(BasicConsensus):
         time.sleep(self._wait_time)
         self._ips, self._counts, alone = self._io_tool.retrieve_ip(ip_address)
 
-        if alone and not self._ftlib.skip_allreduce:
+        if alone and not self._ftlib.skip_allreduce():
             self._io_tool.register_ip(ip_address, self._count)
             self._become_root()
-            self._ftlib.skip_allreduce = True
+            self._ftlib._skip_allreduce = True
             return ConsensusStatus.SKIP_ALLREDUCE
 
         if self._ips is None or self._counts is None:
@@ -151,7 +151,7 @@ class SharedStorage(BasicConsensus):
         self._ftlib.lock()
         logging.info("new member join!")
         self._ftlib._new_member_join = status
-        self._ftlib.skip_allreduce = False
+        self._ftlib._skip_allreduce = False
         try:
             self._server.stop(1)
         except Exception as e:

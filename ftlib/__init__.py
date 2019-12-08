@@ -4,18 +4,47 @@ import logging
 import threading
 
 from .consensus.consensus_status import ConsensusStatus
-from .consensus.shared_storage import SharedStorage
 from .framework.framework_status import FrameworkStatus
 from .ftlib_status import FTAllReduceStatus, FTRebuildStatus
+
+# in the ftlib package, user is able to initialize the package
+# with specific consensus method and framework
+
+
+def gen_constant_class(implemented_list):
+    class SOMEList:
+        IMPLEMENTED = implemented_list
+
+        @staticmethod
+        def contains(item):
+            return item in SOMEList.IMPLEMENTED
+
+    return SOMEList
+
+
+FrameWorkList = gen_constant_class(["dummy_NCCL", "pytorch"])
+ConsensusList = gen_constant_class(["gossip", "shared_storage"])
 
 
 class BasicFTLib:
     lock_count = 0
 
-    def __init__(self):
+    def __init__(self, passive_check=False):
         self._initialized = False
-        self.skip_allreduce = False
+        self._skip_allreduce = False
         self._new_member_join = False
+        self._passive_check = passive_check
+
+        self.initialized = (
+            self._initialized_passive_check
+            if self._passive_check
+            else self._initialized_active_check
+        )
+        self.skip_allreduce = (
+            self._skip_allreduce_passive_check
+            if self._passive_check
+            else self._skip_allreduce_active_check
+        )
 
         self.rank = None
         self.size = None
@@ -25,6 +54,20 @@ class BasicFTLib:
 
         self.consensus = None
         self.framework = None
+
+    def _initialized_passive_check(self):
+        return self._initialized
+
+    def _initialized_active_check(self):
+        self.consensus.confirm()
+        return self._initialized
+
+    def _skip_allreduce_passive_check(self):
+        return self._skip_allreduce
+
+    def _skip_allreduce_active_check(self):
+        self.consensus.confirm()
+        return self._skip_allreduce
 
     def lock(self):
         logging.debug(
@@ -42,17 +85,31 @@ class BasicFTLib:
         self.lock_count = self.lock_count - 1
         logging.debug("after unlock, lock count: {}".format(self.lock_count))
 
-    def initialized(self):
-        return self._initialized
+    def init(
+        self,
+        consensus,
+        framework,
+        consensus_init_kwargs=None,
+        framework_init_kwargs=None,
+    ):
+        assert FrameWorkList.contains(framework)
+        assert ConsensusList.contains(consensus)
 
-    def init(self, consensus, framework):
-        assert framework in ["dummy_NCCL", "pytorch"]
-        self.consensus = SharedStorage(self)
+        if consensus == "shared_storage":
+            from .consensus.shared_storage import SharedStorage
+
+            self.consensus = SharedStorage(self)
+        elif consensus == "gossip":
+            from .consensus.gossip import Gossip
+
+            assert consensus_init_kwargs is not None
+            self.consensus = Gossip(self, **consensus_init_kwargs)
+
         if framework == "dummy_NCCL":
             from .framework.dummy_nccl import DummyNCCL
 
             self.framework = DummyNCCL()
-        if framework == "pytorch":
+        elif framework == "pytorch":
             from .framework.pytorch import PyTroch
 
             self.framework = PyTroch()
@@ -90,7 +147,7 @@ class BasicFTLib:
             self.lock()
             self._initialized = True
             self._new_member_join = False
-            self.skip_allreduce = False
+            self._skip_allreduce = False
             self.unlock()
         else:
             logging.warning("rebuild failed")
@@ -102,12 +159,12 @@ class BasicFTLib:
 
     def allreduce_average(self, *args, **kwargs):
         # if skil_allreduce == True, then average_gradient shouldn't be called
-        if self.skip_allreduce:
+        if self.skip_allreduce():
             return FTAllReduceStatus.NO_NEED
 
         # if the instance is not initialized, then start rebuild
         # TODO: put rebuild into a try loop?
-        if not self._initialized:
+        if not self.initialized():
             rebuild_result = self._rebuild()
             if rebuild_result == FTRebuildStatus.ABORT:
                 return rebuild_result
@@ -131,6 +188,9 @@ class BasicFTLib:
                     self.unlock()
                     raise Exception("new member joined")
             else:
+                # TODO: maybe we can merge
+                # grad_sync_done + locking with/without
+                # locking regardless its rank
                 result = self.framework.grad_sync_done(*args, **kwargs)
 
             if result == FrameworkStatus.SUCCESS:

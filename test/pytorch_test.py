@@ -101,7 +101,7 @@ if __name__ == "__main__":
                 )
             )
 
-            if ftlib.skip_allreduce:
+            if ftlib.skip_allreduce():
                 logging.info("skip allreduce")
                 optimizer.step()
                 continue
