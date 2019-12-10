@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ftlib-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ftlib-test-app
+  template:
+    metadata:
+      labels:
+        app: ftlib-test-app
+    spec:
+      containers:
+        - image: ftlib:deploy
+          imagePullPolicy: Never
+          name: ftlib-test-c
+          ports:
+          - containerPort: 3000
+            name: http
+          - containerPort: 22
+            name: ssh
+          command: ["python3", "/ftlib/test/pytorch_test.py"]
+          resources:
+            requests:
+              memory: "128Mi"
+              cpu: "250m"
+            limits:
+              memory: "128Mi"
+              cpu: "250m"

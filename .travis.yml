@@ -19,13 +19,16 @@ jobs:
     - stage: precommit
       name: "Pre-commit Check"
       script:
-      - docker build -t ftlib:ci -f Dockerfile .
-      - docker run --rm -it -v $PWD:/work -w /work ftlib:ci bash -c "pre-commit run --files $(find ftlib test -name '*.py' -print0 | tr '\0' ' ')"
+      - docker run --rm -it -v $PWD:/work -w /work python:3.6 bash -c "pip3 install pre-commit; pre-commit run --files $(find ftlib test -name '*.py' -print0 | tr '\0' ' ')"
     - stage: tests
       name: "Tests"
       script:
         - set -e
         - bash scripts/setup_k8s_env.sh
+        - docker build -t ftlib:deploy -f deploy/Dockerfile .
+        - kubectl apply -f deploy/ftlib-rbac.yaml
+        # TODO: Validate the result of the created deployment
+        - kubectl apply -f deploy/ftlib-test.yaml
 
 # Only build on this list of branches
 branches:
