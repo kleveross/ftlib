@@ -7,9 +7,9 @@ class BasicConsensus:
 
     def confirm(self, *args, **kwargs):
         # should return if there is a consensus
-        raise NotImplementedError
+        pass
 
-    def get_rank_size(self):
+    def get_member_list(self):
         raise NotImplementedError
 
     def average_success(self):
