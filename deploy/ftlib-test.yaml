@@ -21,7 +21,7 @@ spec:
             name: http
           - containerPort: 22
             name: ssh
-          command: ["python3", "/ftlib/test/generic_test.py"]
+          command: ["python3", "/ftlib/test/pytorch_test.py"]
           resources:
             requests:
               memory: "128Mi"
