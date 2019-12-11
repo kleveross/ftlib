@@ -1,77 +1,71 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [FTLib](#ftlib)
-  - [About the project](#about-the-project)
-    - [API docs](#api-docs)
-    - [Design](#design)
-    - [Status](#status)
-    - [See also](#see-also)
-  - [Getting started](#getting-started)
-  - [Setting up your local development environment](#setting-up-your-local-development-environment)
-    - [Layout](#layout)
-  - [Notes](#notes)
-  - [TODO](#todo)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # FTLib
 
 [![Build Status](https://travis-ci.org/caicloud/ftlib.svg?branch=master)](https://travis-ci.org/caicloud/ftlib)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
-## About the project
+FTLib (Fault-Tolerant Library) is a framework to keep data-parallel distributed trainings continue regardless worker loss or join. It exposes collective communication APIs with fault-tolerance support by gluing a `consensus` to a `communication library`, both of which can be user-specific. A distributed training using FTLib is able to continue as long as at lease one single worker is alive and when new workers join the training.
 
-The FTLib 
+## Status
 
-### API docs
+Prototyping
+
+## Design
+
+* [Design docs](https://github.com/caicloud/ftlib/tree/master/docs/design)
+
+## Develop Guide
 
 **TODO**
 Please refer to the [design docs](https://github.com/caicloud/ftlib/tree/master/docs/design).
 
-### Design
-
-* [Design docs](https://github.com/caicloud/ftlib/tree/master/docs/design)
-
-### Status
-
-Prototype
-
-### See also
+## See also
 
 * [ElasticDL](https://github.com/sql-machine-learning/elasticdl/)
 
 ## Getting started
 
-Please refer `./test`
+### Where to use FTLib
 
-## Setting up your local development environment
+- Less reliable infrastructure/script
 
-It depends on different consensus and framework choice. Details will be released later.
+Distributed training jobs running on less reliable infrasturcture risks more as any worker or communication failure will leads to the terminiation of the entire job.
+
+- Dynamic workload system
+
+A system may reduce the total workload of distributed training jobs to release resources so that resource can be sqeueezed out for jobs with higher priority. With absese of such jobs with higher-priority, such system can increase the workload to avoid idle resource.
+
+### Requirements
+
+The requirements for using `FTLib` differs with choices of consensus and communication library. Please refer the `requirements.txt` under each consensus and communication library(*Not available, still in todo list*).
+
+### Usage
+
+Please refer [`test`](./test) for details on how to use `FTLib` in distributed training.
 
 ### Layout
 
 ```
 .
-├── .github
-│   ├── ISSUE_TEMPLATE.md
-│   └── PULL_REQUEST_TEMPLATE.md
-├── .gitignore
 ├── CHANGELOG.md
+├── deploy
 ├── docs
-│   ├── design
-│   └── imgs
+│   ├── design
+│   └── imgs
 ├── ftlib
-│   ├── __init__.py
-│   ├── consensus
-│   ├── framework
-│   └── ftlib_status.py
-├── test
+│   ├── consensus
+│   ├── framework
+│   ├── ftlib_status.py
+│   ├── __init__.py
+│   └── rank_assign_scheme.py
+├── LICENSE
 ├── OWNERS
-└── README.md
+├── README.md
+├── requirements.txt
+├── ROADMAP
+├── scripts
+└── test
 ```
 
-## Notes
+## License
 
-## TODO
+FTLib is [Apache license](LICENSE). Implementations of consensus and communication library may come with different licenses.
