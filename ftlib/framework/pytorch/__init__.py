@@ -12,7 +12,6 @@ from ..framework_status import FrameworkStatus
 
 
 class PyTorch(BasicFramework):
-
     def __init__(self, grad_sync_timeout=10, max_try=30, port=12355):
         self.type = "pytorch"
         self.grad_sync_timeout = grad_sync_timeout
