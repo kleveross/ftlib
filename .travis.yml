@@ -19,7 +19,7 @@ jobs:
     - stage: precommit
       name: "Pre-commit Check"
       script:
-      - docker run --rm -it -v $PWD:/work -w /work python:3.6 bash -c "pip3 install pre-commit; pre-commit run --files $(find ftlib test -name '*.py' -print0 | tr '\0' ' ')"
+      - docker run --rm -it -v $PWD:/work -w /work python:3.6 bash -c "pip3 install -r requirements-dev.txt; pre-commit run --files $(find ftlib test -name '*.py' -print0 | tr '\0' ' ')"
     - stage: tests
       name: "Tests"
       script:

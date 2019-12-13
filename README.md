@@ -3,7 +3,7 @@
 [![Build Status](https://travis-ci.org/caicloud/ftlib.svg?branch=master)](https://travis-ci.org/caicloud/ftlib)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](./LICENSE)
 
-FTLib (Fault-Tolerant Library) is a framework to keep data-parallel distributed trainings continue regardless worker loss or join. It exposes collective communication APIs with fault-tolerance support by gluing a `consensus` to a `communication library`, both of which can be user-specific. A distributed training using FTLib is able to continue as long as at lease one single worker is alive and when new workers join the training.
+FTLib (Fault-Tolerant Library) is a framework to keep data-parallel distributed training continue regardless worker loss or join. It exposes collective communication APIs with fault-tolerance support by gluing a `consensus` to a `communication library`, both of which can be user-specific. A distributed training using FTLib is able to continue as long as at least one single worker is alive and when new workers join the training.
 
 ## Status
 
@@ -28,11 +28,11 @@ Please refer to the [design docs](https://github.com/caicloud/ftlib/tree/master/
 
 - Less reliable infrastructure/script
 
-Distributed training jobs running on less reliable infrasturcture risks more as any worker or communication failure will leads to the terminiation of the entire job.
+Distributed training jobs running on less reliable infrastructure risks more as any worker or communication failure will leads to the termination of the entire job.
 
 - Dynamic workload system
 
-A system may reduce the total workload of distributed training jobs to release resources so that resource can be sqeueezed out for jobs with higher priority. With absese of such jobs with higher-priority, such system can increase the workload to avoid idle resource.
+A system may reduce the total workload of distributed training jobs to release resources so that resource can be squeezed out for jobs with higher priority. Without such jobs with higher-priority, the system can increase the workload to avoid resource idling.
 
 ### Requirements
 

@@ -1,7 +1,5 @@
 from enum import Enum
 
-from .consensus.consensus_status import ConsensusStatus
-
 
 class FTAllReduceStatus(Enum):
     NO_NEED = -1
@@ -10,5 +8,8 @@ class FTAllReduceStatus(Enum):
     SUCCESS = 0
 
 
-class FTRebuildStatus(ConsensusStatus):
+class FTRebuildStatus(Enum):
+    SUCCESS = 0
+    FAIL = 1
+    SKIP_ALLREDUCE = -1
     ABORT = 2
