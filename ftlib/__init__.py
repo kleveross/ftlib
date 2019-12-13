@@ -110,9 +110,9 @@ class BasicFTLib:
 
             self.framework = DummyNCCL()
         elif framework == "pytorch":
-            from .framework.pytorch import PyTroch
+            from .framework.pytorch import PyTorch
 
-            self.framework = PyTroch()
+            self.framework = PyTorch()
 
     def _rebuild(self):
         try:
