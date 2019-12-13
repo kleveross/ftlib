@@ -115,6 +115,7 @@ class BasicFTLib:
             self.framework = PyTorch()
 
     def _rebuild(self):
+        master_addr = None
         try:
             consensus_result = self.consensus.confirm()
             if consensus_result == ConsensusStatus.SUCCESS:
@@ -131,18 +132,23 @@ class BasicFTLib:
             logging.warning(str(e))
             return FTRebuildStatus.ABORT
 
+        succeeded = None
         try:
             if self.framework.type == "dummy_NCCL":
-                if_success = self.framework.rebuild(self.rank, self.size)
-            if self.framework.type == "pytorch":
-                if_success = self.framework.rebuild(
+                succeeded = self.framework.rebuild(self.rank, self.size)
+            elif self.framework.type == "pytorch":
+                if master_addr is None:
+                    raise ValueError(
+                        "PyTorch framework requires master address for rebuild"
+                    )
+                succeeded = self.framework.rebuild(
                     self.rank, self.size, master_addr=master_addr
                 )
         except Exception as e:
             logging.warning(str(e))
             return FTRebuildStatus.ABORT
 
-        if if_success:
+        if succeeded:
             logging.info("rebuild succeeded")
             self.lock()
             self._initialized = True
@@ -152,7 +158,7 @@ class BasicFTLib:
         else:
             logging.warning("rebuild failed")
 
-        return if_success
+        return succeeded
 
     def wait_weights_ready(self, *args, **kwargs):
         return self.allreduce_average(*args, **kwargs)
