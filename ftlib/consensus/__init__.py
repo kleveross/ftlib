@@ -1,2 +1,1 @@
-from ftlib.consensus import gossip
-from ftlib.consensus import shared_storage
+from ftlib.consensus import gossip, shared_storage  # noqa: F401

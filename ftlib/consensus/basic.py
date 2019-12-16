@@ -1,6 +1,3 @@
-__version__ = "0.0.1"
-
-
 class BasicConsensus:
     def __init__(self):
         pass

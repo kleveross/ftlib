@@ -26,6 +26,7 @@ jobs:
         - set -e
         - bash scripts/setup_k8s_env.sh
         - docker build -t ftlib:deploy -f deploy/Dockerfile .
+        - docker run --rm -it -v $PWD:/work -w /work ftlib:deploy bash -c 'python3 -c "import ftlib"'
         - kubectl apply -f deploy/ftlib-rbac.yaml
         # TODO: Validate the result of the created deployment
         - kubectl apply -f deploy/ftlib-test.yaml

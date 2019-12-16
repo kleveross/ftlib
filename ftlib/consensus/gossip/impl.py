@@ -2,8 +2,8 @@ import logging
 import time
 from ctypes import POINTER, Structure, c_char_p, c_int, c_longlong, cdll
 
-from ..basic import BasicConsensus
-from ..consensus_status import ConsensusStatus
+from ftlib.consensus.basic import BasicConsensus
+from ftlib.consensus.consensus_status import ConsensusStatus
 
 
 #####################################################################

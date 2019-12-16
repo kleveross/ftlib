@@ -7,11 +7,14 @@ from concurrent import futures
 
 import grpc
 
-from ..basic import BasicConsensus
-from ..consensus_status import ConsensusStatus
-from .master_server import JoinService
-from .proto import communicate_pb2, communicate_pb2_grpc
-from .utils import IOTool
+from ftlib.consensus.basic import BasicConsensus
+from ftlib.consensus.consensus_status import ConsensusStatus
+from ftlib.consensus.shared_storage.master_server import JoinService
+from ftlib.consensus.shared_storage.proto import (
+    communicate_pb2,
+    communicate_pb2_grpc,
+)
+from ftlib.consensus.shared_storage.utils import IOTool
 
 hostname = socket.gethostname()
 ip_address = socket.gethostbyname(hostname)

@@ -9,7 +9,7 @@ with open("requirements-dev.txt") as f:
 
 setup(
     name="ftlib",
-    version="master",
+    version="0.0.1",
     description="A framework to keep data-parallel distributed training continue regardless worker loss or join",
     long_description="FTLib (Fault-Tolerant Library) is a framework to keep data-parallel distributed training "
                      "continue regardless worker loss or join. It exposes collective communication APIs with "
