@@ -6,7 +6,7 @@ COPY setup.py setup.py
 COPY deploy/FindNCCL.cmake /usr/share/cmake-3.10/Modules
 RUN pip3 install -r requirements.txt -r requirements-dev.txt
 
-COPY ftlib ftlib
-RUN cd ftlib/consensus/shared_storage/proto/ && bash gen_grpc.sh
-RUN cd ftlib/framework/dummy_nccl/ && bash build_with_pybind11.sh
-RUN python3 setup.py install
+COPY ftlib /ftlib
+RUN cd /ftlib/consensus/shared_storage/proto/ && bash gen_grpc.sh
+RUN cd /ftlib/framework/dummy_nccl/ && bash build_with_pybind11.sh
+RUN cd /ftlib python3 setup.py install

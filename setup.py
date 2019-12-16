@@ -28,5 +28,5 @@ setup(
     extras_require=extras,
     python_requires=">=3.5",
     packages=find_packages(exclude=["*test*"]),
-    package_data={"": ["consensus/shared_storage/proto/communicate.proto"]},
+    package_data={"": ["consensus/shared_storage/proto/*"]},
 )
