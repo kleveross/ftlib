@@ -207,7 +207,7 @@ class BasicFTLib:
                 self._is_initialized = False
                 try:
                     logging.info("aborting communicator")
-                    self.framework.abort_communicator()
+                    self.commlib.abort_communicator()
                 except Exception as e:
                     logging.warning(str(e))
                 return FTAllReduceStatus.ABORT

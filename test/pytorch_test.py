@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
     # initialize the fault-tolerant library with consensus
     # and framework options
-    ftlib = BasicFTLib(consensus="shared_storage", framework="pytorch")
+    ftlib = BasicFTLib(consensus="shared_storage", commlib="pytorch")
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")

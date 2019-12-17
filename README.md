@@ -53,7 +53,7 @@ Please refer [`test`](./test) for details on how to use `FTLib` in distributed t
 │   └── imgs
 ├── ftlib
 │   ├── consensus
-│   ├── framework
+│   ├── commlib
 │   ├── ftlib_status.py
 │   ├── __init__.py
 │   └── rank_assign_scheme.py
