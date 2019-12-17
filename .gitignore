@@ -112,3 +112,7 @@ venv.bak/
 
 # PyCharm settings
 .idea/
+
+# Proto files
+*_pb2.py
+*_pb2_grpc.py
