@@ -1,7 +1,15 @@
 __version__ = "0.0.1"
+from typing import Set
 
 
-class BasicFramework:
+class BasicCommLib:
+    registered_apis: Set[str] = set()
+
+    @classmethod
+    def register_api(cls, api):
+        cls.registered_apis.add(api.__name__)
+        return api
+
     def __init__(self):
         pass
 
@@ -11,5 +19,5 @@ class BasicFramework:
     def abort_communicator(self):
         raise NotImplementedError
 
-    def rebuid(self):
+    def rebuild(self):
         pass
