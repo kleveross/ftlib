@@ -57,6 +57,27 @@ class DummyNCCL(BasicFramework):
             return FrameworkStatus.FAIL
         return FrameworkStatus.SUCCESS
 
+    def broadcast(self, data, root):
+        logging.debug("broadcasting: " + str(data))
+
+        success = self._nccl_context.setInput(data)
+        if not success:
+            raise Exception("set input failed")
+
+        success = self._nccl_context.broadcastAsync(root)
+        if not success:
+            raise Exception("async broadcast operation failed")
+
+        signal.alarm(10)
+
+        success = False
+        while not success:
+            success = self._nccl_context.checkOpResult(1)
+        signal.alarm(0)
+
+        data = self._nccl_context.getOutput()
+        logging.debug("receiving: " + str(data))
+
     def _dummy_allreduce(self, test_data=np.array(range(10)).astype(np.float)):
         logging.debug("averaging: " + str(test_data))
 
@@ -72,7 +93,7 @@ class DummyNCCL(BasicFramework):
 
         success = False
         while not success:
-            success = self._nccl_context.checkAllreduce(1)
+            success = self._nccl_context.checkOpResult(1)
         signal.alarm(0)
 
         data = self._nccl_context.getOutput()

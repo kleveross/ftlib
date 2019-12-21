@@ -116,7 +116,22 @@ struct nccl_context {
         return res == cudaSuccess;
     }
 
-    bool checkAllreduce(int x_sec) {
+    bool broadcastAsync(int root) {
+        NCCLCHECK(ncclBroadcast(
+                                (const void*)send_buff,
+                                (void*)recv_buff,
+                                len,
+                                ncclFloat,
+                                root,
+                                comm,
+                                s
+                                )
+        );
+        auto res = cudaEventRecord(finish);
+        return res == cudaSuccess;
+    }
+
+    bool checkOpResult(int x_sec) {
         auto res = cudaEventQuery(finish);
         if (res != cudaSuccess)
             sleep(x_sec);
@@ -167,7 +182,8 @@ PYBIND11_MODULE(fault_tolerant_lib, m) {
         .def("getOutput", &nccl_context::getOutput)
         .def("commAbort", &nccl_context::commAbort)
         .def("allreduceAsync", &nccl_context::allreduceAsync)
-        .def("checkAllreduce", &nccl_context::checkAllreduce)
+        .def("broadcastAsync", &nccl_context::broadcastAsync)
+        .def("checkOpResult", &nccl_context::checkOpResult)
         .def("destroyComm", &nccl_context::destroyComm)
         .def("commInitRank", &nccl_context::commInitRank);
 }
