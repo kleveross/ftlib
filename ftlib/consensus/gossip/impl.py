@@ -1,9 +1,11 @@
 import logging
+import os
+import socket
 import time
 from ctypes import POINTER, Structure, c_char_p, c_int, c_longlong, cdll
 
 from ftlib.consensus.basic_consensus import BasicConsensus
-from ftlib.consensus.consensus_status import ConsensusStatus
+from ftlib.consensus.consensus_status import ConsensusMode, ConsensusStatus
 
 
 #####################################################################
@@ -12,31 +14,35 @@ from ftlib.consensus.consensus_status import ConsensusStatus
 #####################################################################
 class Gossip(BasicConsensus):
     def __init__(
-        self,
-        ftlib,
-        known_addr_list,
-        so_path="memberlist.so",
-        log_path="/tmp/memberlist.log",
+        self, ftlib, known_addr_list, log_file="memberlist.log",
     ):
         super(Gossip, self).__init__()
 
         self._ftlib = ftlib
 
-        self._lib = cdll.LoadLibrary(so_path)
-        self._lib.join.argtypes = [self._create_GoSlice(c_char_p)]
-        self._lib.get_member_list.restype = self.member_list
+        self._lib = cdll.LoadLibrary(
+            os.path.join(
+                os.path.dirname(os.path.abspath(__file__)), "memberlist.so"
+            )
+        )
+        self._data_type = c_char_p
+        self._goslice_type = self._create_GoSlice(self._data_type)
+        self._lib.join.argtypes = [self._goslice_type]
+        self._lib.get_memberlist.restype = self.member_list
 
-        res = self._lib.init_memberlist(log_path)
+        res = self._lib.init_memberlist(log_file.encode("utf-8"))
         if res != 0:
             raise RuntimeError("failed to initialize memberlist")
 
-        joined = self._join(known_addr_list=known_addr_list)
-        if not joined:
-            raise RuntimeError("failed to join the group")
+        if known_addr_list is not None and known_addr_list != []:
+            joined = self._join(known_addr_list=known_addr_list)
+            if not joined:
+                raise RuntimeError("failed to join the group")
 
         time.sleep(5)
 
-        self._cache = self.get_member_list()
+        self._cache = self.get_memberlist()
+        logging.debug(self._cache)
 
     def _create_GoSlice(self, c_data_type):
         class GoSlice(Structure):
@@ -48,11 +54,15 @@ class Gossip(BasicConsensus):
 
         return GoSlice
 
-    def get_member_list(self):
-        return self._lib.get_member_list()
+    def get_memberlist(self):
+        raw_memberlist = self._lib.get_memberlist()
+        logging.debug("got {} workers".format(len(raw_memberlist)))
+        memberlist = [raw_memberlist[i] for i in range(len(raw_memberlist))]
+        logging.debug("memberlist: {}".format(memberlist))
+        return memberlist
 
-    def id(self):
-        pass
+    def passive_or_active(self):
+        return ConsensusMode.ACTIVE
 
     def _join(self, known_addr_list, codec="utf-8"):
         assert type(known_addr_list) == list
@@ -60,14 +70,12 @@ class Gossip(BasicConsensus):
         addr_list_len = len(known_addr_list)
         assert addr_list_len >= 1
 
-        data_type = c_char_p
         content_tuple = tuple(
-            [data_type(addr.encode(codec)) for addr in known_addr_list]
+            [self._data_type(addr.encode(codec)) for addr in known_addr_list]
         )
 
-        t = (
-            (data_type * addr_list_len),
-            content_tuple,
+        t = self._goslice_type(
+            (self._data_type * addr_list_len)(*content_tuple),
             addr_list_len,
             addr_list_len,
         )
@@ -76,15 +84,21 @@ class Gossip(BasicConsensus):
 
         return res > 0
 
+    def id(sefl):
+        hostname = socket.gethostname()
+        return socket.gethostbyname(hostname)
+
     def confirm(self):
         try:
             self._ftlib.lock()
-            new_ml = self.get_member_list()
+            new_ml = self._lib.get_memberlist()
             if new_ml.size > 1:
                 self._ftlib._skip_allreduce = False
             for idx in range(new_ml.size):
                 if new_ml[idx] not in self._cache:
+                    # TODO: make set_xxx function for all these variables
                     self._ftlib._new_member_join = True
+                    self._ftlib._is_initialized = False
             self._cache = new_ml
         except Exception as e:
             logging.warning(str(e))

@@ -11,23 +11,26 @@ from ftlib.rank_assign_scheme import get_rank_size
 
 
 def gen_constant_class(implemented_list):
-    class SOMEList:
+    class SomeList:
         IMPLEMENTED = implemented_list
 
         @staticmethod
         def contains(item):
-            return item in SOMEList.IMPLEMENTED
+            return item in SomeList.IMPLEMENTED
 
-    return SOMEList
+    return SomeList
 
 
-CommLibList = gen_constant_class(["dummy_NCCL", "pytorch"])
-ConsensusList = gen_constant_class(["gossip", "shared_storage"])
+_commlib_list = gen_constant_class(["dummy_NCCL", "pytorch"])
+_consensus_list = gen_constant_class(["gossip", "shared_storage"])
 
 
 class BasicFTLib:
     _lock_count = 0
-    implemented_list = {"consensus": ConsensusList, "commlib": CommLibList}
+    _implemented_list = {
+        "consensus": _consensus_list,
+        "commlib": _commlib_list,
+    }
 
     def __init__(
         self,
@@ -48,8 +51,8 @@ class BasicFTLib:
         self.consensus = None
         self.commlib = None
 
-        assert CommLibList.contains(commlib)
-        assert ConsensusList.contains(consensus)
+        assert BasicFTLib._implemented_list["commlib"].contains(commlib)
+        assert BasicFTLib._implemented_list["consensus"].contains(consensus)
 
         if consensus == "shared_storage":
             from ftlib.consensus.shared_storage import SharedStorage
@@ -96,7 +99,9 @@ class BasicFTLib:
         return self._skip_allreduce
 
     def _skip_allreduce_active_check(self):
-        self.consensus.confirm()
+        res = self.consensus.confirm()
+        if res == ConsensusStatus.SKIP_ALLREDUCE:
+            self._skip_allreduce = True
         return self._skip_allreduce
 
     def lock(self):
@@ -118,21 +123,34 @@ class BasicFTLib:
 
     def _rebuild(self):
         master_addr = None
+        logging.info("trying to get consensus")
         try:
             consensus_result = self.consensus.confirm()
             if consensus_result == ConsensusStatus.SUCCESS:
-                member_list = self.consensus.get_member_list()
+                logging.debug("consensus got")
+                member_list = self.consensus.get_memberlist()
+                logging.debug("memberlist got: {}".format(member_list))
                 (self.rank, self.size, master_addr,) = get_rank_size(
                     member_list, self.consensus.id()
                 )
+                logging.debug("rank, size, master_addr got")
             if consensus_result == ConsensusStatus.SKIP_ALLREDUCE:
+                logging.debug("consensus is skip allreduce")
                 return consensus_result
             if consensus_result == ConsensusStatus.FAIL:
+                logging.debug("failed to get consensus")
                 raise Exception("consensus not built")
         except Exception as e:
-            logging.warning(str(e))
+            logging.warning(
+                "failed to get consensus because {}".format(str(e))
+            )
             return FTRebuildStatus.ABORT
-
+        logging.info("consensus built")
+        logging.info(
+            "total size = {size} with master worker: {master}".format(
+                size=self.size, master=master_addr
+            )
+        )
         succeeded = None
         # TODO: generalize the `commlib.rebuild` so that there is
         # no need to change the following code to adopt a new
@@ -179,9 +197,11 @@ class BasicFTLib:
             if not self.initialized():
                 rebuild_result = self._rebuild()
                 if rebuild_result == FTRebuildStatus.ABORT:
-                    return rebuild_result
+                    logging.warning("rebuild process returns abort")
+                    return FTAllReduceStatus.ABORT
                 if rebuild_result == FTRebuildStatus.SKIP_ALLREDUCE:
-                    return rebuild_result
+                    logging.warning("rebuild process returns skip allreduce")
+                    return FTAllReduceStatus.ABORT
 
             try:
                 self.lock()

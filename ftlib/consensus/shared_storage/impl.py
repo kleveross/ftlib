@@ -16,10 +16,6 @@ from ftlib.consensus.shared_storage.proto import (
 )
 from ftlib.consensus.shared_storage.utils import IOTool
 
-hostname = socket.gethostname()
-ip_address = socket.gethostbyname(hostname)
-shared_path = "/crystal"
-
 
 def rank_assign_scheme(ips, my_ip):
     all_ips = [my_ip,] + ips  # noqa: E231
@@ -28,19 +24,17 @@ def rank_assign_scheme(ips, my_ip):
     return all_ips.index(my_ip), len(all_ips), all_ips[0]
 
 
-def clean_my_ip_file(path, ip):
-    my_ip_file = os.path.join(path, ip)
-    try:
-        os.remove(my_ip_file)
-    except Exception as e:
-        logging.info("Error when cleaning ip file " + str(e))
-    else:
-        logging.info("ip file removed.")
-
-
 class SharedStorage(BasicConsensus):
-    def __init__(self, ftlib, port=7531, wait_time=5):
+    shared_path = ""
+    ip_address = ""
+
+    def __init__(self, ftlib, port=7531, wait_time=5, path="/crystal"):
         super(SharedStorage, self).__init__()
+
+        SharedStorage.shared_path = path
+        _hostname = socket.gethostname()
+        SharedStorage.ip_address = socket.gethostbyname(_hostname)
+
         self._port = port
         self._wait_time = wait_time
 
@@ -48,7 +42,7 @@ class SharedStorage(BasicConsensus):
         self._counts = None
 
         self._ftlib = ftlib
-        self._io_tool = IOTool(path=shared_path)
+        self._io_tool = IOTool(path=SharedStorage.shared_path)
 
         self._join_service = JoinService()
         self._join_service.set_ftlib(self)
@@ -63,12 +57,30 @@ class SharedStorage(BasicConsensus):
 
         self._rank = None
 
+        atexit.register(
+            SharedStorage.clean_my_ip_file,
+            SharedStorage.shared_path,
+            SharedStorage.ip_address,
+        )
+
+    @staticmethod
+    def clean_my_ip_file(path, ip):
+        my_ip_file = os.path.join(path, ip)
+        try:
+            os.remove(my_ip_file)
+        except Exception as e:
+            logging.info("Error when cleaning ip file " + str(e))
+        else:
+            logging.info("ip file removed.")
+
     def confirm(self, *args, **kwargs):
-        ips, counts, alone = self._io_tool.retrieve_ip(ip_address)
+        ips, counts, alone = self._io_tool.retrieve_ip(
+            SharedStorage.ip_address
+        )
 
         # if there is only myself
         if alone and not self._ftlib.skip_allreduce():
-            self._io_tool.register_ip(ip_address, self._count)
+            self._io_tool.register_ip(SharedStorage.ip_address, self._count)
             self._become_root()
             self._ftlib._skip_allreduce = True
             return ConsensusStatus.SKIP_ALLREDUCE
@@ -98,13 +110,15 @@ class SharedStorage(BasicConsensus):
             else:
                 logging.warning("report join failed")
 
-        self._io_tool.register_ip(ip_address, self._count)
+        self._io_tool.register_ip(SharedStorage.ip_address, self._count)
         logging.info("main rebuild routine wait: {}".format(self._wait_time))
         time.sleep(self._wait_time)
-        self._ips, self._counts, alone = self._io_tool.retrieve_ip(ip_address)
+        self._ips, self._counts, alone = self._io_tool.retrieve_ip(
+            SharedStorage.ip_address
+        )
 
         if alone and not self._ftlib.skip_allreduce():
-            self._io_tool.register_ip(ip_address, self._count)
+            self._io_tool.register_ip(SharedStorage.ip_address, self._count)
             self._become_root()
             self._ftlib._skip_allreduce = True
             return ConsensusStatus.SKIP_ALLREDUCE
@@ -120,7 +134,9 @@ class SharedStorage(BasicConsensus):
         max_count = max(ipc_dict.values())
         assert max_count == self._count
         ips = [ip for ip, count in ipc_dict.items() if count == max_count]
-        rank, size, master_addr = rank_assign_scheme(ips=ips, my_ip=ip_address)
+        rank, size, master_addr = rank_assign_scheme(
+            ips=ips, my_ip=SharedStorage.ip_address
+        )
 
         if rank == 0:
             try:
@@ -196,11 +212,10 @@ class SharedStorage(BasicConsensus):
             else:
                 logging.info("counter retreived")
                 self._count = response.counter
-                self._io_tool.register_ip(ip_address, self._count)
+                self._io_tool.register_ip(
+                    SharedStorage.ip_address, self._count
+                )
                 return True
         logging.warning("counter not retreived")
-        self._io_tool.register_ip(ip_address, self._count)
+        self._io_tool.register_ip(SharedStorage.ip_address, self._count)
         return False
-
-
-atexit.register(clean_my_ip_file, shared_path, ip_address)

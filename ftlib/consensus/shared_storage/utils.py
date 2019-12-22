@@ -30,12 +30,6 @@ def ip_to_int(s):
     return int(s.replace(".", ""))
 
 
-def rank_assign_scheme(ips, my_ip):
-    all_ips = [my_ip,] + ips  # noqa: E231
-    all_ips.sort()
-    return all_ips.index(my_ip), len(all_ips)
-
-
 class IOTool:
     def __init__(self, path):
         self._path = path

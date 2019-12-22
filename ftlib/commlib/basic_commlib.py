@@ -1,4 +1,3 @@
-__version__ = "0.0.1"
 from typing import Set
 
 
@@ -12,6 +11,9 @@ class BasicCommLib:
 
     def __init__(self):
         pass
+
+    def get_registered(self):
+        return BasicCommLib.registered_apis
 
     def grad_sync_done(self, *args, **kwargs):
         raise NotImplementedError

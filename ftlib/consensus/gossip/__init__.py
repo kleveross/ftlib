@@ -1,3 +1,1 @@
-__version__ = "0.0.1"
-
-from .impl import Gossip  # noqa: F401
+from ftlib.consensus.gossip.impl import Gossip  # noqa: F401
