@@ -1,5 +1,6 @@
 from __future__ import print_function
 
+import argparse
 import logging
 import os
 import sys
@@ -21,6 +22,19 @@ sys.path.insert(0, os.path.abspath(root_dir))
 
 LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
+
+parser = argparse.ArgumentParser(
+    description="Process arguments for pytorch + gossip test."
+)
+
+parser.add_argument(
+    "--known-nodes",
+    metavar="K",
+    type=str,
+    default="",
+    help="hostname or ip of existing nodes, \
+         separated by comma (default: None)",
+)
 
 
 # define dummy dataset as well as dataloader
@@ -67,13 +81,24 @@ class Net(nn.Module):
 
 
 if __name__ == "__main__":
+
+    args = parser.parse_args()
+    known_addr_list = (
+        args.known_nodes.split(",") if args.known_nodes != "" else []
+    )
+
     logging.info("start!")
+    logging.info("joining: {}".format(known_addr_list))
 
     epochs = 1
 
     # initialize the fault-tolerant library with consensus
     # and framework options
-    ftlib = BasicFTLib(consensus="shared_storage", commlib="pytorch")
+    ftlib = BasicFTLib(
+        consensus="gossip",
+        commlib="pytorch",
+        consensus_init_kwargs={"known_addr_list": known_addr_list},
+    )
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -88,7 +113,7 @@ if __name__ == "__main__":
             optimizer.zero_grad()
             output = model(data)
             loss = F.nll_loss(output, target)
-            time.sleep(0.5)
+            time.sleep(5)
             loss.backward()
             print(
                 "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
@@ -111,12 +136,17 @@ if __name__ == "__main__":
                     "cannot use average_gradient when there is no need"
                 )
                 exit(2)
-            if res == FTAllReduceStatus.SUCCESS:
+            elif res == FTAllReduceStatus.SUCCESS:
                 logging.info("average succeed")
                 optimizer.step()
-            if res == FTAllReduceStatus.ABORT:
+            elif res == FTAllReduceStatus.ABORT:
                 logging.info("average failed, abort")
                 continue
+            else:
+                print(type(res), res)
+                logging.warning(
+                    "No returned info from ftlib.wait_weights_ready"
+                )
         scheduler.step()
 
     logging.info("terminate!")

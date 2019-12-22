@@ -28,8 +28,10 @@ func init_memberlist(cLogFileName *C.char) C.int {
     logFileName := C.GoString(cLogFileName)
 
     if logFileName != "" {
+        fmt.Printf("log file: %s\n", logFileName)
         f, err := os.Create(logFileName)
         if err != nil {
+            fmt.Println(err)
             panic("Error! cannot create log file")
         }
         config.LogOutput = f

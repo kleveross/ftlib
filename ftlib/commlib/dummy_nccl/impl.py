@@ -1,5 +1,3 @@
-__version__ = "0.0.1"
-
 import logging
 import os
 import signal
@@ -7,9 +5,9 @@ import time
 
 import numpy as np
 
-from ..basic import BasicFramework
-from ..framework_status import FrameworkStatus
-from . import fault_tolerant_lib  # type: ignore
+from ftlib.commlib.basic_commlib import BasicCommLib
+from ftlib.commlib.commlib_status import CommLibStatus
+from ftlib.commlib.dummy_nccl import fault_tolerant_lib  # type: ignore
 
 
 # common utils section
@@ -34,7 +32,7 @@ def handler(signum, frame):
 signal.signal(signal.SIGALRM, handler)
 
 
-class DummyNCCL(BasicFramework):
+class DummyNCCL(BasicCommLib):
     def __init__(
         self,
         grad_sync_timeout=10,
@@ -54,8 +52,8 @@ class DummyNCCL(BasicFramework):
             self._dummy_allreduce()
         except Exception as e:
             logging.warning(str(e))
-            return FrameworkStatus.FAIL
-        return FrameworkStatus.SUCCESS
+            return CommLibStatus.FAIL
+        return CommLibStatus.SUCCESS
 
     def broadcast(self, data, root):
         logging.debug("broadcasting: " + str(data))

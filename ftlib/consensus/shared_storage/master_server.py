@@ -1,4 +1,7 @@
-from .proto import communicate_pb2, communicate_pb2_grpc
+from ftlib.consensus.shared_storage.proto import (
+    communicate_pb2,
+    communicate_pb2_grpc,
+)
 
 
 class JoinService(communicate_pb2_grpc.ReportServicer):

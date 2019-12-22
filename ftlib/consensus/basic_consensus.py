@@ -1,6 +1,3 @@
-__version__ = "0.0.1"
-
-
 class BasicConsensus:
     def __init__(self):
         pass
@@ -9,7 +6,7 @@ class BasicConsensus:
         # should return if there is a consensus
         pass
 
-    def get_member_list(self):
+    def get_memberlist(self):
         raise NotImplementedError
 
     def average_success(self):
