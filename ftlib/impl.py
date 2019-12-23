@@ -225,11 +225,6 @@ class BasicFTLib:
             except Exception as e:
                 logging.exception(str(e))
                 self._is_initialized = False
-                try:
-                    logging.info("aborting communicator")
-                    self.commlib.abort_communicator()
-                except Exception as e:
-                    logging.warning(str(e))
                 return FTAllReduceStatus.ABORT
             finally:
                 self.unlock()
