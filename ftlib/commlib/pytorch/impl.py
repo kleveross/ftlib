@@ -15,6 +15,7 @@ class PyTorch(BasicCommLib):
         self.grad_sync_timeout = grad_sync_timeout
         self._max_try = max_try
         self._port = port
+        self._is_initialized = False
 
     @BasicCommLib.register_api
     def grad_sync_done(self, *args, **kwargs):
@@ -54,6 +55,10 @@ class PyTorch(BasicCommLib):
         dist.barrier()
 
     def rebuild(self, rank, size, master_addr, backend="gloo"):
+        if self._is_initialized:
+            self.abort_communicator()
+            self._is_initialized = False
+
         if rank == 0:
             os.environ["MASTER_ADDR"] = "localhost"
         else:
@@ -61,7 +66,9 @@ class PyTorch(BasicCommLib):
         os.environ["MASTER_PORT"] = str(self._port)
         dist.init_process_group(backend=backend, rank=rank, world_size=size)
 
-        return dist.is_initialized()
+        self._is_initialized = dist.is_initialized()
+
+        return self._is_initialized
 
     def abort_communicator(self):
         dist.destroy_process_group()
