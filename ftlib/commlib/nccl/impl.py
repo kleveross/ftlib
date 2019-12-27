@@ -47,6 +47,7 @@ class NCCL(BasicCommLib):
         self._nccl_id_filename = filename
         self._max_try = max_try
 
+    @BasicCommLib.register_api
     def grad_sync_done(self):
         try:
             self.allreduce(np.array(range(10)).astype(np.float))
@@ -55,6 +56,7 @@ class NCCL(BasicCommLib):
             return CommLibStatus.FAIL
         return CommLibStatus.SUCCESS
 
+    @BasicCommLib.register_api
     def broadcast(self, data, root):
         logging.debug("broadcasting: " + str(data))
 
@@ -76,6 +78,7 @@ class NCCL(BasicCommLib):
         data = self._nccl_context.getOutput()
         logging.debug("receiving: " + str(data))
 
+    @BasicCommLib.register_api
     def allreduce(self, data, op="SUM"):
         if op != "SUM":
             raise ValueError(
