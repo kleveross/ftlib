@@ -185,6 +185,15 @@ class BasicFTLib:
     def wait_weights_ready(self, *args, **kwargs):
         return self._wrap_api(self.commlib, "grad_sync_done")(*args, **kwargs)
 
+    def build(self):
+        assert self.rank is None or self.size is None
+        result = self._rebuild()
+        if result == FTRebuildStatus.ABORT:
+            raise Exception("building consensus failed")
+        if result == FTRebuildStatus.SKIP_ALLREDUCE:
+            self.rank = 0
+            self.size = 1
+
     def _wrap_api(self, cls_instance, api_name):
         def func(*argc, **kwargs):
             # if skil_allreduce == True, then average_gradient
