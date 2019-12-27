@@ -7,7 +7,7 @@ import numpy as np
 
 from ftlib.commlib.basic_commlib import BasicCommLib
 from ftlib.commlib.commlib_status import CommLibStatus
-from ftlib.commlib.dummy_nccl import fault_tolerant_lib  # type: ignore
+from ftlib.commlib.nccl import fault_tolerant_lib  # type: ignore
 
 
 # common utils section
@@ -32,7 +32,7 @@ def handler(signum, frame):
 signal.signal(signal.SIGALRM, handler)
 
 
-class DummyNCCL(BasicCommLib):
+class NCCL(BasicCommLib):
     def __init__(
         self,
         grad_sync_timeout=10,
@@ -49,7 +49,7 @@ class DummyNCCL(BasicCommLib):
 
     def grad_sync_done(self):
         try:
-            self._dummy_allreduce()
+            self.allreduce(np.array(range(10)).astype(np.float))
         except Exception as e:
             logging.warning(str(e))
             return CommLibStatus.FAIL
@@ -76,10 +76,14 @@ class DummyNCCL(BasicCommLib):
         data = self._nccl_context.getOutput()
         logging.debug("receiving: " + str(data))
 
-    def _dummy_allreduce(self, test_data=np.array(range(10)).astype(np.float)):
-        logging.debug("averaging: " + str(test_data))
+    def allreduce(self, data, op="SUM"):
+        if op != "SUM":
+            raise ValueError(
+                "Only SUM operation is currently allowed in NCCL allreduce"
+            )
+        logging.debug("averaging: " + str(data))
 
-        success = self._nccl_context.setInput(test_data)
+        success = self._nccl_context.setInput(data)
         if not success:
             raise Exception("set input failed")
 
@@ -94,8 +98,8 @@ class DummyNCCL(BasicCommLib):
             success = self._nccl_context.checkOpResult(1)
         signal.alarm(0)
 
-        data = self._nccl_context.getOutput()
-        logging.debug("receiving: " + str(data))
+        output = self._nccl_context.getOutput()
+        logging.debug("receiving: " + str(output))
 
     def _rebuild_as_root(self, rank, size):
         self._nccl_context.generateNCCLID()
