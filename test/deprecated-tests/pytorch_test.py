@@ -105,7 +105,7 @@ if __name__ == "__main__":
                 optimizer.step()
                 continue
             else:
-                res = ftlib.wait_weights_ready(model)
+                res = ftlib.wait_gradients_ready(model)
             if res == FTAllReduceStatus.NO_NEED:
                 logging.critical(
                     "cannot use average_gradient when there is no need"

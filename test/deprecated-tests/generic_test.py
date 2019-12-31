@@ -56,7 +56,7 @@ if __name__ == "__main__":
                 dummy_update()
                 continue
             else:
-                res = ftlib.wait_weights_ready()
+                res = ftlib.wait_gradients_ready()
             if res == FTAllReduceStatus.NO_NEED:
                 logging.critical(
                     "cannot use average_gradient when there is no need"

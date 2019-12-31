@@ -3,6 +3,7 @@ from __future__ import print_function
 import argparse
 import logging
 import os
+import sys
 import time
 
 import numpy as np
@@ -10,11 +11,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from data import TrickySampler
 from torch.optim.lr_scheduler import StepLR
 
 from ftlib import BasicFTLib
 from ftlib.ftlib_status import FTAllReduceStatus
+
+root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
+sys.path.insert(0, os.path.abspath(root_dir))
+
 
 LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
@@ -43,6 +47,11 @@ class DummyDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, index):
         return (torch.Tensor(np.random.rand(1, 28, 28)), np.random.randint(10))
+
+
+train_loader = torch.utils.data.DataLoader(
+    DummyDataset(), batch_size=8, shuffle=False
+)
 
 
 # define NN
@@ -91,29 +100,6 @@ if __name__ == "__main__":
         consensus_init_kwargs={"known_addr_list": known_addr_list},
     )
 
-    # create dataset
-    ds = DummyDataset()
-    # create sampler
-    # TrickySampler is merely a data tool for demo.
-    # This sampler can only handle situation of worker
-    # lost. Worker join is not considered for this sampler.
-    #
-    # Meanwhile, samples that has been read but not yet fed
-    # the neural network are all considered as "used" and will
-    # not be re-queued into the sampler after rank or size
-    # changes.
-    sampler = TrickySampler(ds, rank=0, num_replicas=1, shuffle=False)
-    sampler.set_ftlib(ftlib)
-    # create dataloader
-    train_loader = torch.utils.data.DataLoader(
-        ds,
-        batch_size=8,
-        shuffle=False,
-        num_workers=0,
-        pin_memory=False,
-        sampler=sampler,
-    )
-
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
     model = Net().to(device)
@@ -144,7 +130,7 @@ if __name__ == "__main__":
                 optimizer.step()
                 continue
             else:
-                res = ftlib.wait_weights_ready(model)
+                res = ftlib.wait_gradients_ready(model)
             if res == FTAllReduceStatus.NO_NEED:
                 logging.critical(
                     "cannot use average_gradient when there is no need"
@@ -159,7 +145,7 @@ if __name__ == "__main__":
             else:
                 print(type(res), res)
                 logging.warning(
-                    "No returned info from ftlib.wait_weights_ready"
+                    "No returned info from ftlib.wait_gradients_ready"
                 )
         scheduler.step()
 
