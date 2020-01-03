@@ -84,7 +84,7 @@ class Gossip(BasicConsensus):
 
         return res > 0
 
-    def id(sefl):
+    def id(self):
         hostname = socket.gethostname()
         return socket.gethostbyname(hostname)
 
