@@ -21,7 +21,7 @@ def gen_constant_class(implemented_list):
     return SomeList
 
 
-_commlib_list = gen_constant_class(["dummy_NCCL", "pytorch"])
+_commlib_list = gen_constant_class(["NCCL", "pytorch"])
 _consensus_list = gen_constant_class(["gossip", "shared_storage"])
 
 
@@ -64,10 +64,10 @@ class BasicFTLib:
             assert consensus_init_kwargs is not None
             self.consensus = Gossip(self, **consensus_init_kwargs)
 
-        if commlib == "dummy_NCCL":
-            from ftlib.commlib.dummy_nccl import DummyNCCL
+        if commlib == "NCCL":
+            from ftlib.commlib.nccl import NCCL
 
-            self.commlib = DummyNCCL()
+            self.commlib = NCCL()
         elif commlib == "pytorch":
             from ftlib.commlib.pytorch import PyTorch
 
