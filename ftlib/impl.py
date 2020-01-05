@@ -64,6 +64,8 @@ class BasicFTLib:
             assert consensus_init_kwargs is not None
             self.consensus = Gossip(self, **consensus_init_kwargs)
 
+        # get member list after initialization succeeded
+
         if commlib == "NCCL":
             from ftlib.commlib.nccl import NCCL
 
@@ -87,6 +89,8 @@ class BasicFTLib:
         )
 
         self._add_apis()
+
+        self.build()
 
     def _initialized_passive_check(self):
         return self._is_initialized
