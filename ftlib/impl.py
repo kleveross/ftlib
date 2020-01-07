@@ -160,7 +160,7 @@ class BasicFTLib:
         # no need to change the following code to adopt a new
         # communication library
         try:
-            if self.commlib.type == "dummy_NCCL":
+            if self.commlib.type == "NCCL":
                 succeeded = self.commlib.rebuild(self.rank, self.size)
             elif self.commlib.type == "pytorch":
                 if master_addr is None:
@@ -186,7 +186,7 @@ class BasicFTLib:
 
         return succeeded
 
-    def wait_weights_ready(self, *args, **kwargs):
+    def wait_gradients_ready(self, *args, **kwargs):
         return self._wrap_api(self.commlib, "grad_sync_done")(*args, **kwargs)
 
     def build(self):

@@ -44,7 +44,7 @@ if __name__ == "__main__":
 
     # initialize the fault-tolerant library with consensus
     # and framework options
-    ftlib = BasicFTLib(consensus="shared_storage", commlib="dummy_NCCL")
+    ftlib = BasicFTLib(consensus="shared_storage", commlib="NCCL")
 
     for _ in range(epochs):
         for batch in dl:

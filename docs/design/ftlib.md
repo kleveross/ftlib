@@ -73,6 +73,6 @@ FTLib provides the following APIs for initialization and communication:
 
 ### 3. FTLib.allreduce_average(*args, **kwargs)
 
-### 4. FTLib.wait_weights_ready(*args, **kwargs)
+### 4. FTLib.wait_gradients_ready(*args, **kwargs)
 
 ### 5. FTLib.skip_allreduce()
