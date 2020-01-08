@@ -39,13 +39,15 @@ class NCCL(BasicCommLib):
         shared_path="/crystal",
         filename="nccl_id_file",
         max_try=30,
+        wait_time=5,
     ):
-        self.type = "dummy_NCCL"
+        self.type = "NCCL"
         self.grad_sync_timeout = grad_sync_timeout
         self.shared_path = shared_path
         self._nccl_context = fault_tolerant_lib.nccl_context()
         self._nccl_id_filename = filename
         self._max_try = max_try
+        self._wait_time = wait_time
 
     @BasicCommLib.register_api
     def grad_sync_done(self):
