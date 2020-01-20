@@ -13,7 +13,7 @@ spec:
         job: ftlib-test
     spec:
       containers:
-        - image: test.caicloudprivatetest.com/library/ftlib:k8s
+        - image: ftlib:k8s
           imagePullPolicy: IfNotPresent
           name: worker
           ports:
@@ -24,8 +24,7 @@ spec:
           env:
           - name: LOGLEVEL
             value: "DEBUG"
-          command: ["sleep", "96000"]
-          #command: ["python", "/root/example/script/main.py", "--svc_name", "ftlib-test-nrs12"]
+          command: ["python", "/root/example/script/main.py", "--svc_name", "ftlib-test-svc"]
           args: []
           resources:
             limits:
