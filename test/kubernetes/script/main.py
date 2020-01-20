@@ -102,42 +102,6 @@ class TrainingApproach:
     def train_step(self, *args, **kwargs):
         self._train_step(*args, **kwargs)
 
-    # def train_step(self, *args, **kwargs):
-    #     if self._future is not None:
-    #         if not self._future.done():
-    #             logging.info(
-    #                 "Previous try is not completed, rebuilding ddp model"
-    #             )
-    #             self._ddp_model = nn.parallel.DistributedDataParallel(
-    #                 model=self._raw_model,
-    #                 broadcast_buffers=False,
-    #                 check_reduction=True,
-    #             )
-    #             self._optimizer = optim.SGD(
-    #                 self._ddp_model.parameters(), lr=1.0
-    #             )
-    #
-    #     executor = ThreadPoolExecutor(max_workers=1)
-    #     logging.debug("thread executor created")
-    #     self._future = executor.submit(self._train_step, *args, **kwargs)
-    #     logging.debug("optimizer.step submitted")
-    #     start = time.time()
-    #     logging.debug(f"start at: {start}")
-    #     while (time.time() - start) < 10:
-    #         time.sleep(0.01)
-    #         logging.debug(f"e-time: {time.time() - start}")
-    #         if self._future.done():
-    #             logging.debug("the futures is finished")
-    #             break
-    #     executor.shutdown(wait=False)
-    #     if not self._future.done():
-    #         raise TimeoutError("step function timed-out in optimizer.step()")
-    #     else:
-    #         self._raw_model.load_state_dict(
-    #             copy.deepcopy(self._ddp_model.state_dict()), strict=False
-    #         )
-    #         logging.debug("raw_model weights copied")
-
 
 if __name__ == "__main__":
 
