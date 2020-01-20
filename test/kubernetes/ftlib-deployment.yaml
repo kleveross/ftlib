@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ftlib-test
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      job: ftlib-test
+  template:
+    metadata:
+      labels:
+        job: ftlib-test
+    spec:
+      containers:
+        - image: test.caicloudprivatetest.com/library/ftlib:k8s
+          imagePullPolicy: IfNotPresent
+          name: worker
+          ports:
+          - containerPort: 7946
+            name: gossip
+          - containerPort: 22
+            name: ssh
+          env:
+          - name: LOGLEVEL
+            value: "DEBUG"
+          command: ["sleep", "96000"]
+          #command: ["python", "/root/example/script/main.py", "--svc_name", "ftlib-test-nrs12"]
+          args: []
+          resources:
+            limits:
+              nvidia.com/gpu: 1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ftlib-test-svc
+  labels:
+    job: ftlib-test-svc
+spec:
+  clusterIP: None
+  ports:
+  - port: 7946
+    protocol: TCP
+  selector:
+    job: ftlib-test
