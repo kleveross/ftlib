@@ -1,12 +1,10 @@
 from __future__ import print_function
 
 import argparse
-import copy
 import logging
 import os
 import socket
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import torch
@@ -85,15 +83,6 @@ class Net(nn.Module):
         return output
 
 
-def model_has_same_params(model1, model2):
-    if len(model1.state_dict()) != len(model2.state_dict()):
-        return False
-    for p1, p2 in zip(model1.parameters(), model2.parameters()):
-        if p1.data.ne(p2.data).sum() > 0:
-            return False
-    return True
-
-
 class TrainingApproach:
     def __init__(self, raw_model):
         self._raw_model = raw_model
@@ -111,40 +100,43 @@ class TrainingApproach:
         self._optimizer.step()
 
     def train_step(self, *args, **kwargs):
-        if self._future is not None:
-            if not self._future.done():
-                logging.info(
-                    "Previous try is not completed, rebuilding ddp model"
-                )
-                self._ddp_model = nn.parallel.DistributedDataParallel(
-                    model=self._raw_model,
-                    broadcast_buffers=False,
-                    check_reduction=True,
-                )
-                self._optimizer = optim.SGD(
-                    self._ddp_model.parameters(), lr=1.0
-                )
+        self._train_step(*args, **kwargs)
 
-        executor = ThreadPoolExecutor(max_workers=1)
-        logging.debug("thread executor created")
-        self._future = executor.submit(self._train_step, *args, **kwargs)
-        logging.debug("optimizer.step submitted")
-        start = time.time()
-        logging.debug(f"start at: {start}")
-        while (time.time() - start) < 10:
-            time.sleep(0.01)
-            logging.debug(f"e-time: {time.time() - start}")
-            if self._future.done():
-                logging.debug("the futures is finished")
-                break
-        executor.shutdown(wait=False)
-        if not self._future.done():
-            raise TimeoutError("step function timed-out in optimizer.step()")
-        else:
-            self._raw_model.load_state_dict(
-                copy.deepcopy(self._ddp_model.state_dict()), strict=False
-            )
-            logging.debug("raw_model weights copied")
+    # def train_step(self, *args, **kwargs):
+    #     if self._future is not None:
+    #         if not self._future.done():
+    #             logging.info(
+    #                 "Previous try is not completed, rebuilding ddp model"
+    #             )
+    #             self._ddp_model = nn.parallel.DistributedDataParallel(
+    #                 model=self._raw_model,
+    #                 broadcast_buffers=False,
+    #                 check_reduction=True,
+    #             )
+    #             self._optimizer = optim.SGD(
+    #                 self._ddp_model.parameters(), lr=1.0
+    #             )
+    #
+    #     executor = ThreadPoolExecutor(max_workers=1)
+    #     logging.debug("thread executor created")
+    #     self._future = executor.submit(self._train_step, *args, **kwargs)
+    #     logging.debug("optimizer.step submitted")
+    #     start = time.time()
+    #     logging.debug(f"start at: {start}")
+    #     while (time.time() - start) < 10:
+    #         time.sleep(0.01)
+    #         logging.debug(f"e-time: {time.time() - start}")
+    #         if self._future.done():
+    #             logging.debug("the futures is finished")
+    #             break
+    #     executor.shutdown(wait=False)
+    #     if not self._future.done():
+    #         raise TimeoutError("step function timed-out in optimizer.step()")
+    #     else:
+    #         self._raw_model.load_state_dict(
+    #             copy.deepcopy(self._ddp_model.state_dict()), strict=False
+    #         )
+    #         logging.debug("raw_model weights copied")
 
 
 if __name__ == "__main__":
@@ -177,6 +169,13 @@ if __name__ == "__main__":
     device = torch.device("cuda" if use_cuda else "cpu")
 
     model = Net().to(device)
+
+    # insert a barrier here and broadcast the weights
+    ftlib.barrir()
+    logging.info(f"start to broadcast model parameters from rank 0")
+    for p in model.parameters():
+        ftlib.broadcast(p.data, 0)
+    logging.debug(model.state_dict())
 
     ta = TrainingApproach(model)
 
