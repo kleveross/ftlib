@@ -1,7 +1,6 @@
 import logging
 import threading
 
-from ftlib.commlib.commlib_status import CommLibStatus
 from ftlib.consensus.consensus_status import ConsensusMode, ConsensusStatus
 from ftlib.ftlib_status import FTAllReduceStatus, FTRebuildStatus
 from ftlib.rank_assign_scheme import get_rank_size
@@ -261,15 +260,13 @@ class BasicFTLib:
                 else:
                     result = getattr(cls_instance, api_name)(*argc, **kwargs)
 
-                if result == CommLibStatus.SUCCESS:
-                    self.consensus.average_success()
-                else:
-                    self.consensus.average_failure()
-                    raise Exception("operation fails")
             except Exception as e:
                 logging.exception(str(e))
                 self._is_initialized = False
-                return FTAllReduceStatus.ABORT
+                self.consensus.average_failure()
+                return result
+            else:
+                self.consensus.average_success()
             finally:
                 self.unlock()
 

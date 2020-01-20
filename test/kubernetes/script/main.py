@@ -171,7 +171,7 @@ if __name__ == "__main__":
     model = Net().to(device)
 
     # insert a barrier here and broadcast the weights
-    ftlib.barrir()
+    ftlib.barrier()
     logging.info(f"start to broadcast model parameters from rank 0")
     for p in model.parameters():
         ftlib.broadcast(p.data, 0)
