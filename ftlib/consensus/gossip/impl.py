@@ -14,7 +14,7 @@ from ftlib.consensus.consensus_status import ConsensusMode, ConsensusStatus
 #####################################################################
 class Gossip(BasicConsensus):
     def __init__(
-        self, ftlib, known_addr_list, log_file="memberlist.log",
+        self, ftlib, known_addr_list, log_file="/tmp/memberlist.log",
     ):
         super(Gossip, self).__init__()
 
@@ -57,7 +57,7 @@ class Gossip(BasicConsensus):
     def get_memberlist(self):
         raw_memberlist = self._lib.get_memberlist()
         logging.debug("got {} workers".format(len(raw_memberlist)))
-        memberlist = [raw_memberlist[i] for i in range(len(raw_memberlist))]
+        memberlist = {raw_memberlist[i] for i in range(len(raw_memberlist))}
         logging.debug("memberlist: {}".format(memberlist))
         return memberlist
 
@@ -79,7 +79,8 @@ class Gossip(BasicConsensus):
             addr_list_len,
             addr_list_len,
         )
-
+        logging.info("Waiting 15 seconds before join")
+        time.sleep(15)
         res = self._lib.join(t)
 
         return res > 0
@@ -91,22 +92,29 @@ class Gossip(BasicConsensus):
     def confirm(self):
         try:
             self._ftlib.lock()
-            new_ml = self._lib.get_memberlist()
-            if new_ml.size > 1:
+            new_ml = self.get_memberlist()
+
+            if len(new_ml) == 1:
+                self._ftlib._skip_allreduce = True
+            else:
                 self._ftlib._skip_allreduce = False
-            for idx in range(new_ml.size):
-                if new_ml[idx] not in self._cache:
-                    # TODO: make set_xxx function for all these variables
-                    self._ftlib._new_member_join = True
-                    self._ftlib._is_initialized = False
+
+            logging.debug(f"old memberlist: {self._cache}")
+            logging.debug(f"new memberlist: {new_ml}")
+            if new_ml != self._cache:
+                self._ftlib._is_initialized = False
+
+            if len([m for m in new_ml if m not in self._cache]) > 0:
+                self._ftlib._new_member_join = True
+
             self._cache = new_ml
         except Exception as e:
             logging.warning(str(e))
             return ConsensusStatus.FAIL
         else:
-            if new_ml.size == 1:
+            if len(new_ml) == 1:
                 return ConsensusStatus.SKIP_ALLREDUCE
-            if new_ml.size < 1:
+            if len(new_ml) < 1:
                 return ConsensusStatus.FAIL
             return ConsensusStatus.SUCCESS
         finally:

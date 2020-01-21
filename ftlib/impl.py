@@ -1,7 +1,6 @@
 import logging
 import threading
 
-from ftlib.commlib.commlib_status import CommLibStatus
 from ftlib.consensus.consensus_status import ConsensusMode, ConsensusStatus
 from ftlib.ftlib_status import FTAllReduceStatus, FTRebuildStatus
 from ftlib.rank_assign_scheme import get_rank_size
@@ -76,6 +75,13 @@ class BasicFTLib:
             self.commlib = PyTorch()
 
         self._passive_or_active = self.consensus.passive_or_active()
+        logging.info(
+            "FTLib is using {mode} mode.".format(
+                mode="activate"
+                if self._passive_or_active == ConsensusMode.ACTIVE
+                else "passive"
+            )
+        )
 
         self.initialized = (
             self._initialized_passive_check
@@ -122,8 +128,30 @@ class BasicFTLib:
 
     # TODO: execute still under development
     def execute(self, func, *args, **kwargs):
-        new_func = self._wrap_api(None, func)
-        return new_func(*args, **kwargs)
+        if self.skip_allreduce():
+            return func(*args, **kwargs)
+
+        if not self.initialized():
+            logging.info("FTLib not initialized, (re-)initializing...")
+            rebuild_result = self._rebuild()
+            if rebuild_result == FTRebuildStatus.ABORT:
+                raise Exception("rebuild process returns abort")
+            if rebuild_result == FTRebuildStatus.SKIP_ALLREDUCE:
+                raise Exception("rebuild process returns skip allreduce")
+
+        try:
+            # self.lock()
+            logging.debug("start to execute func")
+            res = func(*args, **kwargs)
+        except Exception as e:
+            logging.exception(str(e))
+            self._is_initialized = False
+            return
+        else:
+            return res
+        finally:
+            pass
+            # self.unlock()
 
     def _rebuild(self):
         master_addr = None
@@ -208,6 +236,7 @@ class BasicFTLib:
             # if the instance is not initialized, then start rebuild
             # TODO: put rebuild into a try loop?
             if not self.initialized():
+                logging.info("not initialized. rebuilding starts.")
                 rebuild_result = self._rebuild()
                 if rebuild_result == FTRebuildStatus.ABORT:
                     logging.warning("rebuild process returns abort")
@@ -227,18 +256,17 @@ class BasicFTLib:
 
                     raise Exception("new member joined")
                 if cls_instance is None:
-                    api_name(*argc, **kwargs)
+                    result = api_name(*argc, **kwargs)
                 else:
                     result = getattr(cls_instance, api_name)(*argc, **kwargs)
-                if result == CommLibStatus.SUCCESS:
-                    self.consensus.average_success()
-                else:
-                    self.consensus.average_failure()
-                    raise Exception("operation fails")
+
             except Exception as e:
                 logging.exception(str(e))
                 self._is_initialized = False
-                return FTAllReduceStatus.ABORT
+                self.consensus.average_failure()
+                return result
+            else:
+                self.consensus.average_success()
             finally:
                 self.unlock()
 
