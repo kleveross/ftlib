@@ -1,6 +1,6 @@
 FROM golang:1.12.14
 WORKDIR /root/
-RUN git clone -b kubernetes-example https://github.com/zw0610/ftlib.git
+COPY . /root/ftlib
 RUN cd /root/ftlib/ftlib/consensus/gossip && bash ./gen_shared_lib.sh
 
 FROM pytorch/pytorch:1.2-cuda10.0-cudnn7-runtime
