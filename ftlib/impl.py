@@ -172,6 +172,7 @@ class BasicFTLib:
     def _rebuild(self):
         master_addr = None
         logging.info("trying to get consensus")
+
         try:
             consensus_result = self.consensus.confirm()
             if consensus_result == ConsensusStatus.SUCCESS:
@@ -184,7 +185,7 @@ class BasicFTLib:
                 logging.debug("rank, size, master_addr got")
             if consensus_result == ConsensusStatus.SKIP_ALLREDUCE:
                 logging.debug("consensus is skip allreduce")
-                return consensus_result
+                return FTRebuildStatus.SKIP_ALLREDUCE
             if consensus_result == ConsensusStatus.FAIL:
                 logging.debug("failed to get consensus")
                 raise Exception("consensus not built")
@@ -193,16 +194,18 @@ class BasicFTLib:
                 "failed to get consensus because {}".format(str(e))
             )
             return FTRebuildStatus.ABORT
+
         logging.info("consensus built")
         logging.info(
             "total size = {size} with master worker: {master}".format(
                 size=self.size, master=master_addr
             )
         )
+
         succeeded = None
         # TODO: generalize the `commlib.rebuild` so that there is
-        # no need to change the following code to adopt a new
-        # communication library
+        #  no need to change the following code to adopt a new
+        #  communication library
         try:
             if self.commlib.type == "NCCL":
                 succeeded = self.commlib.rebuild(self.rank, self.size)
@@ -228,7 +231,7 @@ class BasicFTLib:
         else:
             logging.warning("rebuild failed")
 
-        return succeeded
+        return FTRebuildStatus.SUCCESS
 
     def wait_gradients_ready(self, *args, **kwargs):
         return self._wrap_api(self.commlib, "grad_sync_done")(*args, **kwargs)
