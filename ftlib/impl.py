@@ -129,12 +129,11 @@ class BasicFTLib:
     # TODO: execute still under development
     def execute(self, func, *args, **kwargs):
         # Args:
-        #     function, a function object to be executed
+        #     func, a function object to be executed
         #     *args, args passed to the function
         #     **kwargs, kwargs passed to the function
         # Returns:
-        #     FTAllReduceStatus, which includes SUCCESS, FAIL,
-        #     SKIP_ALLREDUCE, ABORT
+        #     objects returned by `func`
 
         # Check whether if it there is only one worker, which means
         # the function should execute function without confirming
@@ -245,7 +244,22 @@ class BasicFTLib:
 
     def _wrap_api(self, cls_instance, api_name):
         def func(*argc, **kwargs):
-            # if skil_allreduce == True, then average_gradient
+            # Args:
+            #     *args, args passed to the function
+            #     **kwargs, kwargs passed to the function
+            # Returns:
+            #     if collective ops returns successfully, returns the value
+            #     otherwise, returns FTAllReduceStatus
+            #     TODO: rename FTAllReduceStatus to FTCollectiveStatus
+
+            # the api here is
+            ops = (
+                api_name
+                if cls_instance is None
+                else getattr(cls_instance, api_name)
+            )
+
+            # if skil_allreduce == True, then any collective ops
             # shouldn't be called
             if self.skip_allreduce():
                 return FTAllReduceStatus.NO_NEED
@@ -253,14 +267,19 @@ class BasicFTLib:
             # if the instance is not initialized, then start rebuild
             # TODO: put rebuild into a try loop?
             if not self.initialized():
-                logging.info("not initialized. rebuilding starts.")
+                logging.info("FTLib not initialized. (re-)building...")
+                # TODO: we should consider retrying rebuild process
+                #  for multiple times
                 rebuild_result = self._rebuild()
                 if rebuild_result == FTRebuildStatus.ABORT:
                     logging.warning("rebuild process returns abort")
                     return FTAllReduceStatus.ABORT
+                if rebuild_result == FTRebuildStatus.FAIL:
+                    logging.warning("rebuild process returns fail")
+                    return FTAllReduceStatus.ABORT
                 if rebuild_result == FTRebuildStatus.SKIP_ALLREDUCE:
                     logging.warning("rebuild process returns skip allreduce")
-                    return FTAllReduceStatus.ABORT
+                    return FTAllReduceStatus.NO_NEED
 
             try:
                 self.lock()
@@ -273,21 +292,19 @@ class BasicFTLib:
 
                     raise Exception("new member joined")
                 if cls_instance is None:
-                    result = api_name(*argc, **kwargs)
+                    result = ops(*argc, **kwargs)
                 else:
-                    result = getattr(cls_instance, api_name)(*argc, **kwargs)
-
+                    result = ops(*argc, **kwargs)
             except Exception as e:
                 logging.exception(str(e))
                 self._is_initialized = False
                 self.consensus.average_failure()
-                return result
+                return FTAllReduceStatus.FAIL
             else:
                 self.consensus.average_success()
+                return result
             finally:
                 self.unlock()
-
-            return FTAllReduceStatus.SUCCESS
 
         return func
 
