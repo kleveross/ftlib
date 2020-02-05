@@ -128,19 +128,39 @@ class BasicFTLib:
 
     # TODO: execute still under development
     def execute(self, func, *args, **kwargs):
+        # Args:
+        #     function, a function object to be executed
+        #     *args, args passed to the function
+        #     **kwargs, kwargs passed to the function
+        # Returns:
+        #     FTAllReduceStatus, which includes SUCCESS, FAIL,
+        #     SKIP_ALLREDUCE, ABORT
+
+        # Check whether if it there is only one worker, which means
+        # the function should execute function without confirming
+        # consensus being built
         if self.skip_allreduce():
             return func(*args, **kwargs)
 
+        # Check whether the consensus has been built, if not, rebuild
+        # if the rebuild succeeds, continue the following steps
         if not self.initialized():
             logging.info("FTLib not initialized, (re-)initializing...")
+            # TODO: we should consider retrying rebuild process
+            #  for multiple times
             rebuild_result = self._rebuild()
-            if rebuild_result == FTRebuildStatus.ABORT:
-                raise Exception("rebuild process returns abort")
-            if rebuild_result == FTRebuildStatus.SKIP_ALLREDUCE:
-                raise Exception("rebuild process returns skip allreduce")
+            if rebuild_result != FTAllReduceStatus.SUCCESS:
+                if rebuild_result == FTRebuildStatus.FAIL:
+                    raise Exception("rebuild process returns failed")
+                elif rebuild_result == FTRebuildStatus.ABORT:
+                    raise Exception("rebuild process returns abort")
+                elif rebuild_result == FTRebuildStatus.SKIP_ALLREDUCE:
+                    # there is no need to rebuild
+                    logging.debug("concensus rebuild returns skip_allreduce")
+                    return func(*args, **kwargs)
 
+        # Execute the `func` after the consensus is built
         try:
-            # self.lock()
             logging.debug("start to execute func")
             res = func(*args, **kwargs)
         except Exception as e:
@@ -149,9 +169,6 @@ class BasicFTLib:
             return
         else:
             return res
-        finally:
-            pass
-            # self.unlock()
 
     def _rebuild(self):
         master_addr = None
