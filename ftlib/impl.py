@@ -1,5 +1,6 @@
 import logging
 import threading
+import time
 
 from ftlib.consensus.consensus_status import ConsensusMode, ConsensusStatus
 from ftlib.ftlib_status import FTAllReduceStatus, FTRebuildStatus
@@ -169,12 +170,62 @@ class BasicFTLib:
         else:
             return res
 
+    def _confirm(self):
+        # here we use self.consensus.confirm to try reaching a global consensus
+        initial_count_left = 3
+        initial_wait_time = 4.0  # seconds
+
+        count_left = initial_count_left
+        max_timeout = 25.0  # seconds
+
+        wait_time = initial_wait_time
+
+        result = self.consensus.confirm()
+        start_time = time.time()
+        while (
+            start_time + max_timeout - time.time()
+        ) > 0.0 and count_left > 0:
+            time.sleep(wait_time)
+            result = self.consensus.confirm()
+            count_left = count_left - 1
+            if self.consensus.ml_changed():
+                wait_time = initial_wait_time
+                count_left = initial_count_left
+            else:
+                wait_time = wait_time * 0.5
+
+        return result
+
     def _rebuild(self):
+        # In `_rebuild`, there is only one timeout setting, which is
+        # embedded in `self.commlib.rebuild`. It is necessary to follow
+        # this config:
+        #     max(time_of_consensus_built) < self.commlib.rebuild.timeout
+        # Meanwhile, the consensus built process does not rush to a
+        # conclusion with single `self.consensus.confirm` call.
+        #
+        # Worker 1                        Worker 2
+        #   |                                |
+        #   ||<-consensus starts             |
+        #   ||                               |
+        #   ||                               |
+        #   ||<-consensus reached            |
+        #   |                                |
+        #  ||<-(re-)init starts              |
+        #  ||                                |
+        #  ||                                ||<-consensus starts
+        #  ||                                ||
+        #  ||                                ||
+        #  ||                                ||<-consensus reached
+        #  ||                                |
+        #  ||                               ||<-(re-)init starts
+        #  ||<-(re-)init times out          ||<-(re-)init succeeds
+        #   |                                |
         master_addr = None
         logging.info("trying to get consensus")
 
         try:
-            consensus_result = self.consensus.confirm()
+            consensus_result = self._confirm()
             if consensus_result == ConsensusStatus.SUCCESS:
                 logging.debug("consensus got")
                 member_list = self.consensus.get_memberlist()
