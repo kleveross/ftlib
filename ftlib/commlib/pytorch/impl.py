@@ -1,7 +1,6 @@
 __pytorch_version__ = "1.2.0"
 
 import logging
-import os
 from datetime import timedelta
 
 import torch.distributed as dist
@@ -20,7 +19,7 @@ class PyTorch(BasicCommLib):
         self._port = port
         self._is_initialized = False
         self._backend = backend
-        self._timeout = timedelta(minutes=0.5)
+        self._timeout = timedelta(minutes=1)
 
     @BasicCommLib.register_api
     def grad_sync_done(self, *args, **kwargs):
@@ -66,18 +65,20 @@ class PyTorch(BasicCommLib):
             self._is_initialized = False
         logging.info("old communicator is cleared")
 
-        # set environment variables
-        os.environ["MASTER_ADDR"] = str(master_addr)
-        os.environ["MASTER_PORT"] = str(self._port)
-        os.environ["WORLD_SIZE"] = str(size)
-        os.environ["RANK"] = str(rank)
+        init_method = f"tcp://{master_addr}:{self._port}"
 
         logging.info(
             "initializing process group with "
-            + f"backend={self._backend}, rank={rank}, world_size={size}"
+            + f"backend={self._backend}, rank={rank}, world_size={size}, "
             + f"master_port={self._port}, master_addr={master_addr}"
         )
-        dist.init_process_group(backend=self._backend, timeout=self._timeout)
+        dist.init_process_group(
+            backend=self._backend,
+            timeout=self._timeout,
+            world_size=size,
+            rank=rank,
+            init_method=init_method,
+        )
 
         self._is_initialized = dist.is_initialized()
 

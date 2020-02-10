@@ -8,6 +8,7 @@ import time
 
 import numpy as np
 import torch
+import torch.distributed as dist
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -91,6 +92,7 @@ class TrainingApproach:
         )
         self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1.0)
         self._future = None
+        self.need_reinit = False
 
     def _train_step(self, data, target, loss_func: nn.functional):
         output = self._ddp_model(data)
@@ -100,6 +102,18 @@ class TrainingApproach:
         self._optimizer.step()
 
     def train_step(self, *args, **kwargs):
+        if self.need_reinit:
+            self._ddp_model = (
+                nn.parallel.DistributedDataParallel(
+                    self._raw_model,
+                    broadcast_buffers=False,
+                    check_reduction=True,
+                )
+                if dist.is_initialized()
+                else self._raw_model
+            )
+            self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1.0)
+            self.need_reinit = False
         self._train_step(*args, **kwargs)
 
 
@@ -148,6 +162,8 @@ if __name__ == "__main__":
         for batch_idx, (data, target) in enumerate(train_loader):
             data = data.to(device)
             target = target.to(device)
+            if (not ftlib.skip_allreduce()) and (not ftlib.initialized()):
+                ta.need_reinit = True
             ftlib.execute(ta.train_step, data, target, loss_func=F.nll_loss)
             time.sleep(1)
 
