@@ -20,7 +20,7 @@ class PyTorch(BasicCommLib):
         self._port = port
         self._is_initialized = False
         self._backend = backend
-        self._timeout = timedelta(minutes=2)
+        self._timeout = timedelta(minutes=0.5)
 
     @BasicCommLib.register_api
     def grad_sync_done(self, *args, **kwargs):

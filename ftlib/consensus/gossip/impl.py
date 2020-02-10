@@ -41,6 +41,7 @@ class Gossip(BasicConsensus):
 
         time.sleep(5)
 
+        self._ml_changed = False
         self._cache = self.get_memberlist()
         logging.debug(self._cache)
 
@@ -80,6 +81,9 @@ class Gossip(BasicConsensus):
             addr_list_len,
         )
         logging.info("Waiting 15 seconds before join")
+        # TODO: waiting for 15 sec is not an optimal choice
+        #  it will better to set 15 sec as max_timeout, and
+        #  the stop condition is
         time.sleep(15)
         res = self._lib.join(t)
 
@@ -89,7 +93,15 @@ class Gossip(BasicConsensus):
         hostname = socket.gethostname()
         return socket.gethostbyname(hostname)
 
+    def ml_changed(self):
+        return self._ml_changed
+
     def confirm(self):
+        # FTLib.confirm only try once to update member list.
+        # When checking skip_allreduce or initialized, simply calling
+        # confirm is preferred as it checks if the member list changes
+        # since the last time, and also will not cost too much time.
+
         try:
             self._ftlib.lock()
             new_ml = self.get_memberlist()
@@ -102,6 +114,7 @@ class Gossip(BasicConsensus):
             logging.debug(f"old memberlist: {self._cache}")
             logging.debug(f"new memberlist: {new_ml}")
             if new_ml != self._cache:
+                self._ml_changed = True
                 self._ftlib._is_initialized = False
 
             if len([m for m in new_ml if m not in self._cache]) > 0:
