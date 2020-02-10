@@ -67,7 +67,7 @@ func get_memberlist() C.member_list {
 
     var size int
     for idx, member := range list.Members() {
-        fmt.Printf("Member: %s %s\n", member.Name, member.Addr)
+        // fmt.Printf("Member: %s %s\n", member.Name, member.Addr)
         ml.addrs[idx] = C.CString(member.Addr.String())
         size = idx + 1
     }
