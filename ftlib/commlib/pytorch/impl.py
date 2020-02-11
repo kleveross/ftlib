@@ -1,4 +1,4 @@
-__pytorch_version__ = "1.2.0"
+__pytorch_version__ = "1.3.0"
 
 import logging
 from datetime import timedelta
