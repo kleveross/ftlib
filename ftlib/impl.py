@@ -127,6 +127,12 @@ class BasicFTLib:
         self._lock_count = self._lock_count - 1
         logging.debug(f"after unlock, lock count: {self._lock_count}")
 
+    def set_initialized(self, is_initialized):
+        self._is_initialized = is_initialized
+        if not is_initialized:
+            self.commlib.abort_communicator()
+            self.consensus.average_failure()
+
     # TODO: execute still under development
     def execute(self, func, *args, **kwargs):
         # Args:
@@ -165,7 +171,7 @@ class BasicFTLib:
             res = func(*args, **kwargs)
         except Exception as e:
             logging.exception(str(e))
-            self._is_initialized = False
+            self.set_initialized(False)
             return
         else:
             return res
@@ -351,8 +357,7 @@ class BasicFTLib:
                     result = ops(*argc, **kwargs)
             except Exception as e:
                 logging.exception(str(e))
-                self._is_initialized = False
-                self.consensus.average_failure()
+                self.set_initialized(False)
                 return FTAllReduceStatus.FAIL
             else:
                 self.consensus.average_success()

@@ -115,7 +115,7 @@ class Gossip(BasicConsensus):
             logging.debug(f"new memberlist: {new_ml}")
             if new_ml != self._cache:
                 self._ml_changed = True
-                self._ftlib._is_initialized = False
+                self._ftlib.set_initialized(False)
 
             if len([m for m in new_ml if m not in self._cache]) > 0:
                 self._ftlib._new_member_join = True
