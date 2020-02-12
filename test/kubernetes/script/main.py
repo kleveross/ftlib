@@ -86,32 +86,46 @@ class Net(nn.Module):
 
 class TrainingApproach:
     def __init__(self, raw_model):
-        self._raw_model = raw_model
-        self._ddp_model = nn.parallel.DistributedDataParallel(
-            self._raw_model, broadcast_buffers=False, check_reduction=True,
-        )
-        self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1.0)
-        self._future = None
-        self.need_reinit = False
+        self._raw_model: nn.Module = raw_model
+        self._ddp_model: nn.parallel.DistributedDataParallel = None
+        self._optimizer = None
+        self.need_reinit = True
+        self.single_worker = False
 
     def _train_step(self, data, target, loss_func: nn.functional):
         output = self._ddp_model(data)
         loss = loss_func(output, target)
+        print(f"loss = {loss}")
         self._optimizer.zero_grad()
         loss.backward()
         self._optimizer.step()
 
+    def checkpoint(self):
+        self._raw_model.load_state_dict(
+            self._ddp_model.state_dict(), strict=False,
+        )
+
     def train_step(self, *args, **kwargs):
         if self.need_reinit:
-            self._ddp_model = (
-                nn.parallel.DistributedDataParallel(
+            if dist.is_initialized():
+                # parallel mode
+                print("wait for barrier")
+                dist.barrier()
+                print("start to broadcast")
+                for p in self._raw_model.parameters():
+                    dist.broadcast(p.data, 0)
+                print("wrap with DDP")
+                self._ddp_model = nn.parallel.DistributedDataParallel(
                     self._raw_model,
                     broadcast_buffers=False,
                     check_reduction=True,
                 )
-                if dist.is_initialized()
-                else self._raw_model
-            )
+            else:
+                # single worker mode
+                # skip all reduce
+                print("single worker mode")
+                self._ddp_model = self._raw_model
+
             self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1.0)
             self.need_reinit = False
         self._train_step(*args, **kwargs)
@@ -148,13 +162,6 @@ if __name__ == "__main__":
 
     model = Net().to(device)
 
-    # insert a barrier here and broadcast the weights
-    ftlib.barrier()
-    logging.info(f"start to broadcast model parameters from rank 0")
-    for p in model.parameters():
-        ftlib.broadcast(p.data, 0)
-    logging.debug(model.state_dict())
-
     ta = TrainingApproach(model)
 
     for epoch in range(1, epochs + 1):
@@ -162,7 +169,7 @@ if __name__ == "__main__":
         for batch_idx, (data, target) in enumerate(train_loader):
             data = data.to(device)
             target = target.to(device)
-            if (not ftlib.skip_allreduce()) and (not ftlib.initialized()):
+            if not ftlib.initialized():
                 ta.need_reinit = True
             ftlib.execute(ta.train_step, data, target, loss_func=F.nll_loss)
             time.sleep(1)

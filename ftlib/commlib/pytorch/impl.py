@@ -1,4 +1,4 @@
-__pytorch_version__ = "1.2.0"
+__pytorch_version__ = "1.3.0"
 
 import logging
 from datetime import timedelta
@@ -17,7 +17,6 @@ class PyTorch(BasicCommLib):
         self.grad_sync_timeout = grad_sync_timeout
         self._max_try = max_try
         self._port = port
-        self._is_initialized = False
         self._backend = backend
         self._timeout = timedelta(minutes=1)
 
@@ -59,11 +58,11 @@ class PyTorch(BasicCommLib):
         dist.barrier()
 
     def rebuild(self, rank, size, master_addr):
-        if self._is_initialized:
+        if dist.is_initialized():
             logging.info("aborting communicator")
             self.abort_communicator()
-            self._is_initialized = False
-        logging.info("old communicator is cleared")
+
+        assert not dist.is_initialized()
 
         init_method = f"tcp://{master_addr}:{self._port}"
 
@@ -80,9 +79,8 @@ class PyTorch(BasicCommLib):
             init_method=init_method,
         )
 
-        self._is_initialized = dist.is_initialized()
-
-        return self._is_initialized
+        return dist.is_initialized()
 
     def abort_communicator(self):
-        dist.destroy_process_group()
+        if dist.is_initialized():
+            dist.destroy_process_group()
