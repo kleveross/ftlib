@@ -86,12 +86,8 @@ class Net(nn.Module):
 
 class TrainingApproach:
     def __init__(self, raw_model):
-        self._raw_model = raw_model
-        # self._ddp_model = nn.parallel.DistributedDataParallel(
-        #     self._raw_model, broadcast_buffers=False, check_reduction=True,
-        # )
-        # self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1.0)
-        self._ddp_model = None
+        self._raw_model: nn.Module = raw_model
+        self._ddp_model: nn.parallel.DistributedDataParallel = None
         self._optimizer = None
         self.need_reinit = True
         self.single_worker = False
@@ -99,9 +95,15 @@ class TrainingApproach:
     def _train_step(self, data, target, loss_func: nn.functional):
         output = self._ddp_model(data)
         loss = loss_func(output, target)
+        print(f"loss = {loss}")
         self._optimizer.zero_grad()
         loss.backward()
         self._optimizer.step()
+
+    def checkpoint(self):
+        self._raw_model.load_state_dict(
+            self._ddp_model.state_dict(), strict=False,
+        )
 
     def train_step(self, *args, **kwargs):
         if self.need_reinit:
@@ -121,6 +123,7 @@ class TrainingApproach:
             else:
                 # single worker mode
                 # skip all reduce
+                print("single worker mode")
                 self._ddp_model = self._raw_model
 
             self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1.0)
@@ -158,13 +161,6 @@ if __name__ == "__main__":
     device = torch.device("cuda" if use_cuda else "cpu")
 
     model = Net().to(device)
-
-    # # insert a barrier here and broadcast the weights
-    # ftlib.barrier()
-    # logging.info(f"start to broadcast model parameters from rank 0")
-    # for p in model.parameters():
-    #     ftlib.broadcast(p.data, 0)
-    # logging.debug(model.state_dict())
 
     ta = TrainingApproach(model)
 
