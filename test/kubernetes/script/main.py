@@ -3,17 +3,16 @@ from __future__ import print_function
 import argparse
 import logging
 import os
-import socket
 import time
 
 import numpy as np
 import torch
 import torch.distributed as dist
 import torch.nn as nn
-import torch.nn.functional as F
 import torch.optim as optim
 
 from ftlib import BasicFTLib
+from ftlib.utils.kubernetes import get_peer_set
 
 LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
@@ -39,49 +38,31 @@ parser.add_argument(
 )
 
 
-def get_peer_set(svc_name):
-    my_ip = socket.gethostbyname(socket.gethostname())
-    temp_set = socket.getaddrinfo(svc_name, 0, proto=socket.IPPROTO_TCP)
-    peer_set = {peer[-1][0] for peer in temp_set if peer[-1][0] != my_ip}
-    return peer_set
-
-
-# define dummy dataset as well as dataloader
-class DummyDataset(torch.utils.data.Dataset):
-    def __init__(self, length=1000):
+class SyntheticData(torch.utils.data.Dataset):
+    def __init__(self, generater_func, length=10):
         self._len = length
+        self.generater_func = generater_func
 
     def __len__(self):
         return self._len
 
-    def __getitem__(self, index):
-        return (torch.Tensor(np.random.rand(1, 28, 28)), np.random.randint(10))
+    def __getitem__(self, idx):
+        x = np.random.rand() * 10.0 - 5.0
+        y = self.generater_func(x)
+        return np.float32(x), np.float32(y)
 
 
 # define NN
-class Net(nn.Module):
+class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.conv1 = nn.Conv2d(1, 32, 3, 1)
-        self.conv2 = nn.Conv2d(32, 64, 3, 1)
-        self.dropout1 = nn.Dropout2d(0.25)
-        self.dropout2 = nn.Dropout2d(0.5)
-        self.fc1 = nn.Linear(9216, 128)
-        self.fc2 = nn.Linear(128, 10)
+        self.a = torch.nn.Parameter(torch.rand(1), requires_grad=True)
+        self.b = torch.nn.Parameter(torch.rand(1), requires_grad=True)
+        self.c = torch.nn.Parameter(torch.rand(1), requires_grad=True)
 
     def forward(self, x):
-        x = self.conv1(x)
-        x = F.relu(x)
-        x = self.conv2(x)
-        x = F.max_pool2d(x, 2)
-        x = self.dropout1(x)
-        x = torch.flatten(x, 1)
-        x = self.fc1(x)
-        x = F.relu(x)
-        x = self.dropout2(x)
-        x = self.fc2(x)
-        output = F.log_softmax(x, dim=1)
-        return output
+        y_predict = self.a * x * x + self.b * x + self.c
+        return y_predict
 
 
 class TrainingApproach:
@@ -101,9 +82,10 @@ class TrainingApproach:
         self._optimizer.step()
 
     def checkpoint(self):
-        self._raw_model.load_state_dict(
-            self._ddp_model.state_dict(), strict=False,
-        )
+        if self._ddp_model is not None:
+            self._raw_model.load_state_dict(
+                self._ddp_model.state_dict(), strict=False,
+            )
 
     def train_step(self, *args, **kwargs):
         if self.need_reinit:
@@ -126,7 +108,7 @@ class TrainingApproach:
                 print("single worker mode")
                 self._ddp_model = self._raw_model
 
-            self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1.0)
+            self._optimizer = optim.SGD(self._ddp_model.parameters(), lr=1e-3)
             self.need_reinit = False
         self._train_step(*args, **kwargs)
 
@@ -150,12 +132,26 @@ if __name__ == "__main__":
         },
     )
 
+    a_ground_truth = np.double(1.2)
+    b_ground_truth = np.double(-3.7)
+    c_ground_truth = np.double(4.9)
+
+    target_func = (
+        lambda x: a_ground_truth * x * x + b_ground_truth * x + c_ground_truth
+    )
+
     train_loader = torch.utils.data.DataLoader(
-        DummyDataset(args.dummy_sample_num),
-        batch_size=8,
+        SyntheticData(
+            lambda x: target_func(x)
+            + 10.0 * (np.double(np.random.rand()) - 0.5),
+            args.dummy_sample_num,
+        ),
+        batch_size=1,
         shuffle=False,
         num_workers=0,
     )
+
+    criterion = torch.nn.MSELoss(reduction="sum")
 
     use_cuda = torch.cuda.is_available()
     device = torch.device("cuda" if use_cuda else "cpu")
@@ -171,7 +167,8 @@ if __name__ == "__main__":
             target = target.to(device)
             if not ftlib.initialized():
                 ta.need_reinit = True
-            ftlib.execute(ta.train_step, data, target, loss_func=F.nll_loss)
-            time.sleep(1)
+                ta.checkpoint()
+            ftlib.execute(ta.train_step, data, target, loss_func=criterion)
+            time.sleep(5)
 
     logging.info("terminate!")
