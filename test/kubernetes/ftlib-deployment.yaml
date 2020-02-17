@@ -24,6 +24,8 @@ spec:
           env:
           - name: LOGLEVEL
             value: "DEBUG"
+          - name: PYTHONUNBUFFERED
+            value: "0"
           command: ["python", "/root/example/script/main.py", "--svc_name", "ftlib-test-svc"]
           args: []
           resources:
