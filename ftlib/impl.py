@@ -230,6 +230,7 @@ class BasicFTLib:
         master_addr = None
         logging.info("trying to get consensus")
 
+        member_list = None
         try:
             consensus_result = self._confirm()
             if consensus_result == ConsensusStatus.SUCCESS:
@@ -237,7 +238,7 @@ class BasicFTLib:
                 member_list = self.consensus.get_memberlist()
                 logging.debug("memberlist got: {}".format(member_list))
                 (self.rank, self.size, master_addr,) = get_rank_size(
-                    member_list, self.consensus.id()
+                    member_list, self.consensus.id(), self.member_list
                 )
                 logging.debug("rank, size, master_addr got")
             if consensus_result == ConsensusStatus.SKIP_ALLREDUCE:
@@ -284,6 +285,7 @@ class BasicFTLib:
             self._is_initialized = True
             self._new_member_join = False
             self._skip_allreduce = False
+            self.member_list = member_list
             self.unlock()
         else:
             logging.warning("rebuild failed")

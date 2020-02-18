@@ -1,7 +1,7 @@
 import logging
 
 
-def get_rank_size(member_list, self_identity):
+def get_rank_size(member_list, self_identity, old_member_list=[]):
     # Args:
     #     member_list: list of strings, each of which is the ip (identity) of
     #     workers
@@ -25,6 +25,20 @@ def get_rank_size(member_list, self_identity):
 
     hashed_member_dict = {hash_ip(m): m for m in member_list}
     hashed_member_list = sorted(hashed_member_dict.keys())
+
+    # To address issue on broadcast after rebuild
+    # https://github.com/caicloud/ftlib/issues/51
+    # Re-arrange the hashed_member_list
+    candidate_idx = 1
+    if hashed_member_list[0] not in old_member_list:
+        assert len(old_member_list) > 0
+        while candidate_idx < len(hashed_member_list):
+            if hashed_member_list[candidate_idx] in old_member_list:
+                break
+        assert hashed_member_list[candidate_idx] in old_member_list
+        temp = hashed_member_list[0]
+        hashed_member_list[0] = hashed_member_list[candidate_idx]
+        hashed_member_list[candidate_idx] = temp
 
     return (
         hashed_member_list.index(hash_ip(self_identity)),
