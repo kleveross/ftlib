@@ -4,7 +4,6 @@ import argparse
 import logging
 import os
 import sys
-import time
 
 import numpy as np
 import torch
@@ -14,7 +13,6 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 
 from ftlib import BasicFTLib
-from ftlib.ftlib_status import FTAllReduceStatus
 
 root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
 sys.path.insert(0, os.path.abspath(root_dir))
@@ -109,44 +107,24 @@ if __name__ == "__main__":
     for epoch in range(1, epochs + 1):
         model.train()
         for batch_idx, (data, target) in enumerate(train_loader):
+            # move data to device (CPU or GPU)
             data, target = data.to(device), target.to(device)
+            # clear gradients
             optimizer.zero_grad()
+            # forward computation
             output = model(data)
+            # calculate loss
             loss = F.nll_loss(output, target)
-            time.sleep(5)
+            # backward propagation
             loss.backward()
-            print(
-                "Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}".format(
-                    epoch,
-                    batch_idx * len(data),
-                    len(train_loader.dataset),
-                    100.0 * batch_idx / len(train_loader),
-                    loss.item(),
-                )
-            )
-
+            # call ftlib before update gradients (optimizer.step())
             if ftlib.skip_allreduce():
                 logging.info("skip allreduce")
                 optimizer.step()
-                continue
             else:
                 res = ftlib.wait_gradients_ready(model)
-            if res == FTAllReduceStatus.NO_NEED:
-                logging.critical(
-                    "cannot use average_gradient when there is no need"
-                )
-                exit(2)
-            elif res == FTAllReduceStatus.SUCCESS:
-                logging.info("average succeed")
-                optimizer.step()
-            elif res == FTAllReduceStatus.ABORT:
-                logging.info("average failed, abort")
-                continue
-            else:
-                print(type(res), res)
-                logging.warning(
-                    "No returned info from ftlib.wait_gradients_ready"
-                )
+                if res is None:
+                    optimizer.step()
         scheduler.step()
 
     logging.info("terminate!")
