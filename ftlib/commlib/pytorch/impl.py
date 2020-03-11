@@ -3,6 +3,8 @@ __pytorch_version__ = "1.3.0"
 import logging
 from datetime import timedelta
 
+import numpy as np
+import torch
 import torch.distributed as dist
 
 from ftlib.commlib.basic_commlib import BasicCommLib
@@ -41,6 +43,7 @@ class PyTorch(BasicCommLib):
 
     @BasicCommLib.register_api
     def allreduce(self, data, op="MEAN"):
+        data = torch.from_numpy(data) if isinstance(data, np.ndarray) else data
         # torch.distributed.ReduceOp has no option for 'MEAN'
         # so far, we only implemented 'MEAN'
         reduce_op = dist.reduce_op.SUM
@@ -51,6 +54,7 @@ class PyTorch(BasicCommLib):
 
     @BasicCommLib.register_api
     def broadcast(self, data, root_rank):
+        data = torch.from_numpy(data) if isinstance(data, np.ndarray) else data
         dist.broadcast(data, root_rank)
 
     @BasicCommLib.register_api
