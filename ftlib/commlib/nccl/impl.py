@@ -10,7 +10,6 @@ from ftlib.commlib.nccl import fault_tolerant_lib  # type: ignore
 
 
 # common utils section
-# deprecated
 def try_write_file(directory, filename, content):
     logging.info("writing: {}/{}".format(directory, filename))
     with open(os.path.join(directory, filename), "w") as f:
