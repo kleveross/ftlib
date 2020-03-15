@@ -6,11 +6,11 @@ import time
 import numpy as np
 
 from ftlib.commlib.basic_commlib import BasicCommLib
-from ftlib.commlib.commlib_status import CommLibStatus
 from ftlib.commlib.nccl import fault_tolerant_lib  # type: ignore
 
 
 # common utils section
+# deprecated
 def try_write_file(directory, filename, content):
     logging.info("writing: {}/{}".format(directory, filename))
     with open(os.path.join(directory, filename), "w") as f:
@@ -36,75 +36,92 @@ class NCCL(BasicCommLib):
     def __init__(
         self,
         grad_sync_timeout=10,
-        shared_path="/crystal",
+        shared_path=None,
         filename="nccl_id_file",
         max_try=30,
         wait_time=5,
     ):
         self.type = "NCCL"
         self.grad_sync_timeout = grad_sync_timeout
+        if shared_path is None:
+            self.shared_path = os.getenv("NCCL_ID_DIR", "/crystal")
         self.shared_path = shared_path
         self._nccl_context = fault_tolerant_lib.nccl_context()
         self._nccl_id_filename = filename
         self._max_try = max_try
         self._wait_time = wait_time
+        self._default_timeout = wait_time
 
     @BasicCommLib.register_api
     def grad_sync_done(self):
-        try:
-            self.allreduce(np.array(range(10)).astype(np.float))
-        except Exception as e:
-            logging.warning(str(e))
-            return CommLibStatus.FAIL
-        return CommLibStatus.SUCCESS
+        raise NotImplementedError
 
     @BasicCommLib.register_api
-    def broadcast(self, data, root):
+    def broadcast(self, data, root_rank, timeout=None):
+        if timeout is None:
+            timeout == self._default_timeout
+
         logging.debug("broadcasting: " + str(data))
 
-        success = self._nccl_context.setInput(data)
-        if not success:
-            raise Exception("set input failed")
+        if not isinstance(data, np.ndarray):
+            data = np.array(data).astype(np.float32)
 
-        success = self._nccl_context.broadcastAsync(root)
-        if not success:
-            raise Exception("async broadcast operation failed")
+        if data.dtype is not np.float32:
+            raise NotImplementedError(
+                "data types other fp32 are not implemented"
+            )
 
-        signal.alarm(10)
-
-        success = False
-        while not success:
-            success = self._nccl_context.checkOpResult(1)
+        broadcast_call = self._nccl_context.broadcast(data, root_rank)
+        signal.alarm(timeout)
+        call_success = False
+        while not call_success:
+            call_success = broadcast_call.check_complete()
         signal.alarm(0)
 
-        data = self._nccl_context.getOutput()
+        if not call_success:
+            raise RuntimeError("broadcast failed")
+
         logging.debug("receiving: " + str(data))
 
+        # the data is broadcast in-place
+        return data
+
     @BasicCommLib.register_api
-    def allreduce(self, data, op="SUM"):
+    def allreduce(self, data, op="SUM", timeout=None):
         if op != "SUM":
             raise ValueError(
                 "Only SUM operation is currently allowed in NCCL allreduce"
             )
+        if timeout is None:
+            timeout = self._default_timeout
         logging.debug("averaging: " + str(data))
 
-        success = self._nccl_context.setInput(data)
-        if not success:
-            raise Exception("set input failed")
+        if not isinstance(data, np.ndarray):
+            data = np.array(data).astype(np.float32)
 
-        success = self._nccl_context.allreduceAsync()
-        if not success:
-            raise Exception("asynchronizely allreduce failed")
+        if data.dtype is not np.float32:
+            raise NotImplementedError(
+                "data types other fp32 are not implemented"
+            )
 
-        signal.alarm(10)
-
-        success = False
-        while not success:
-            success = self._nccl_context.checkOpResult(1)
+        allreduce_call = self._nccl_context.allreduce(data)
+        signal.alarm(timeout)
+        call_success = False
+        while not call_success:
+            call_success = allreduce_call.check_complete()
         signal.alarm(0)
 
-        output = self._nccl_context.getOutput()
-        logging.debug("receiving: " + str(output))
+        if not call_success:
+            raise RuntimeError("allreduce failed")
+
+        logging.debug("receiving: " + str(data))
+
+        # the data is allreduced in-place
+        return data
+
+    def barrier(self):
+        # maybe we can allreduce a byte
+        pass
 
     def _rebuild_as_root(self, rank, size):
         self._nccl_context.generateNCCLID()
@@ -155,7 +172,7 @@ class NCCL(BasicCommLib):
         self._nccl_context.commInitRank(size, rank)
         return True
 
-    def rebuild(self, rank, size):
+    def rebuild(self, rank, size, *args, **kwargs):
         if rank == 0:
             res = self._rebuild_as_root(rank, size)
         else:

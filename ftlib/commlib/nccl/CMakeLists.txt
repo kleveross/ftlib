@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 3.8.1)
+
 project(fault_tolerant_lib LANGUAGES CUDA CXX)
 
-add_subdirectory(pybind11)
+find_package(pybind11)
 pybind11_add_module(fault_tolerant_lib src/fault_tolerant_lib.cxx)
 
 find_package(CUDA REQUIRED)
