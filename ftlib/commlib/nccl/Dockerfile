@@ -1,4 +1,4 @@
-FROM dockerhub.azk8s.cn/nvidia/cuda:10.1-devel-ubuntu18.04
+FROM nvidia/cuda:10.1-devel-ubuntu18.04
 
 RUN apt update && apt -y install wget cmake
 
