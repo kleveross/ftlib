@@ -42,7 +42,7 @@ class PyTorch(BasicCommLib):
         return CommLibStatus.SUCCESS
 
     @BasicCommLib.register_api
-    def allreduce(self, data, op="MEAN"):
+    def allreduce(self, data, op="MEAN", *args, **kwargs):
         data = torch.from_numpy(data) if isinstance(data, np.ndarray) else data
         # torch.distributed.ReduceOp has no option for 'MEAN'
         # so far, we only implemented 'MEAN'
@@ -53,12 +53,12 @@ class PyTorch(BasicCommLib):
             data /= size
 
     @BasicCommLib.register_api
-    def broadcast(self, data, root_rank):
+    def broadcast(self, data, root_rank, *args, **kwargs):
         data = torch.from_numpy(data) if isinstance(data, np.ndarray) else data
         dist.broadcast(data, root_rank)
 
     @BasicCommLib.register_api
-    def barrier(self):
+    def barrier(self, *args, **kwargs):
         dist.barrier()
 
     def rebuild(self, rank, size, master_addr):

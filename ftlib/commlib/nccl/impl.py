@@ -118,8 +118,9 @@ class NCCL(BasicCommLib):
         # the data is allreduced in-place
         return data
 
-    def barrier(self):
-        # maybe we can allreduce a byte
+    def barrier(self, timeout=None):
+        sync_data = np.array([0]).astype(np.float32)
+        self.allreduce(sync_data, timeout=timeout)
         pass
 
     def _rebuild_as_root(self, rank, size):
