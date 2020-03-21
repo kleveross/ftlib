@@ -5,6 +5,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <chrono>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -13,8 +14,8 @@
 #include "gloo/rendezvous/context.h"
 #include "gloo/rendezvous/file_store.h"
 #include "gloo/rendezvous/prefix_store.h"
-#include "gloo/allreduce_ring.h"
-#include "gloo/broadcast_one_to_all.h"
+#include "gloo/allreduce.h"
+#include "gloo/broadcast.h"
 #include "gloo/barrier.h"
 
 namespace py = pybind11;
@@ -42,37 +43,46 @@ struct Gloo {
     }
 
     template<typename T>
-    py::array_t<T> broadcast(py::array_t<T> data, int root_rank) {
+    py::array_t<T> broadcast(py::array_t<T> data, int root_rank, int timeout) {
         py::buffer_info buff = data.request();
         const int count = data.size();
-        std::vector<T*> ptrs = std::vector<T*>(count);
-        for (size_t i = 0; i < count; i++)
-        {
-            ptrs[i] = static_cast<T*>(buff.ptr) + i;
-        }
         
-        auto op = std::make_shared<gloo::BroadcastOneToAll<T>>(context, ptrs, count, root_rank);
-        op->run();
+        gloo::BroadcastOptions opts(context);
+        opts.setRoot(root_rank);
+        
+        auto t = std::chrono::duration<int, std::milli>(timeout*1000);
+        opts.setTimeout(t);
+
+        opts.setInput(const_cast<T*>((const T*) buff.ptr), count);
+        opts.setOutput((T*) buff.ptr, count);
+
+        gloo::broadcast(opts);
         return data;
     }
 
     template<typename T>
-    py::array_t<T> allreduce(py::array_t<T> data) {
+    py::array_t<T> allreduce(py::array_t<T> data, int timeout) {
         py::buffer_info buff = data.request();
         const int count = data.size();
-        std::vector<T*> ptrs = std::vector<T*>(count);
-        for (size_t i = 0; i < count; i++)
-        {
-            ptrs[i] = static_cast<T*>(buff.ptr) + i;
-        }
 
-        auto op = std::make_shared<gloo::AllreduceRing<T>>(context, ptrs, count);
-        op->run();
+        gloo::AllreduceOptions opts(context);
+
+        auto t = std::chrono::duration<int, std::milli>(timeout*1000);
+        opts.setTimeout(t);
+
+        opts.setInput(const_cast<T*>((const T*) buff.ptr), count);
+        opts.setOutput((T*) buff.ptr, count);
+
+        gloo::allreduce(opts);
         return data;
     }
 
-    void barrier(void) {
+    void barrier(int timeout) {
         gloo::BarrierOptions opts(context);
+
+        auto t = std::chrono::duration<int, std::milli>(timeout*1000);
+        opts.setTimeout(t);
+
         gloo::barrier(opts);
     }
 

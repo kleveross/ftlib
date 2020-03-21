@@ -44,7 +44,8 @@ class NCCL(BasicCommLib):
         self.grad_sync_timeout = grad_sync_timeout
         if shared_path is None:
             self.shared_path = os.getenv("NCCL_ID_DIR", "/crystal")
-        self.shared_path = shared_path
+        else:
+            self.shared_path = shared_path
         self._nccl_context = fault_tolerant_lib.nccl_context()
         self._nccl_id_filename = filename
         self._max_try = max_try
