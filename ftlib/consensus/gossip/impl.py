@@ -14,7 +14,12 @@ from ftlib.consensus.consensus_status import ConsensusMode, ConsensusStatus
 #####################################################################
 class Gossip(BasicConsensus):
     def __init__(
-        self, ftlib, known_addr_list, log_file="/tmp/memberlist.log",
+        self,
+        ftlib,
+        known_addr_list,
+        log_file="/tmp/memberlist.log",
+        custom_bind_addr="",
+        custom_advertise_addr="",
     ):
         super(Gossip, self).__init__()
 
@@ -30,7 +35,11 @@ class Gossip(BasicConsensus):
         self._lib.join.argtypes = [self._goslice_type]
         self._lib.get_memberlist.restype = self.member_list
 
-        res = self._lib.init_memberlist(log_file.encode("utf-8"))
+        res = self._lib.init_memberlist(
+            log_file.encode("utf-8"),
+            custom_bind_addr.encode("utf-8"),
+            custom_advertise_addr.encode("utf-8"),
+        )
         if res != 0:
             raise RuntimeError("failed to initialize memberlist")
 
