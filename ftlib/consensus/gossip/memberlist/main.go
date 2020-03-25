@@ -21,11 +21,25 @@ func main() {
 }
 
 //export init_memberlist
-func init_memberlist(cLogFileName *C.char) C.int {
+func init_memberlist(
+    cLogFileName *C.char,
+    cBindAddr *C.char,
+    cAdvertiseAddr *C.char,
+    ) C.int {
     var err error
     config := memberlist.DefaultLocalConfig()
 
     logFileName := C.GoString(cLogFileName)
+    customBindAddr := C.GoString(cBindAddr)
+    customAdvertiseAddr := C.GoString(cAdvertiseAddr)
+
+    if customBindAddr != "" {
+        config.BindAddr = customBindAddr
+    }
+
+    if customAdvertiseAddr != "" {
+        config.AdvertiseAddr = customAdvertiseAddr
+    }
 
     if logFileName != "" {
         fmt.Printf("log file: %s\n", logFileName)
