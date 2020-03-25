@@ -1,12 +1,9 @@
-import logging
 import os
 import signal
-import time
-
-import numpy as np
 
 from ftlib.commlib.basic_commlib import BasicCommLib
 from ftlib.commlib.gloo import gloo_lib  # type: ignore
+
 
 def handler(signum, frame):
     print("Signal handler called with signal", signum)
@@ -14,6 +11,7 @@ def handler(signum, frame):
 
 
 signal.signal(signal.SIGALRM, handler)
+
 
 class GLOO(BasicCommLib):
     def __init__(self, shared_path=None, wait_time=5):
@@ -32,7 +30,7 @@ class GLOO(BasicCommLib):
         if self._gloo is not None:
             self.abort_communicator()
 
-        prefix = master_addr.replace('.', '')
+        prefix = master_addr.replace(".", "")
 
         self._gloo = gloo_lib.Gloo(self.shared_path, prefix, rank, size)
 
