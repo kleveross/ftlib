@@ -46,9 +46,10 @@ class Gossip(BasicConsensus):
         if res != 0:
             raise RuntimeError("failed to initialize memberlist")
 
+        self.joined = False
         if known_addr_list is not None and known_addr_list != []:
-            joined = self._join(known_addr_list=known_addr_list)
-            if not joined:
+            self.joined = self._join(known_addr_list=known_addr_list)
+            if not self.joined:
                 logging.warning("failed to join the group")
 
         # we need to take a sleep here because the group may add further nodes
@@ -80,8 +81,9 @@ class Gossip(BasicConsensus):
         return ConsensusMode.ACTIVE
 
     def manual_join(self, known_addr_list, wait_time=15):
-        # return bool value: joined
-        return self._join(known_addr_list, wait_time=wait_time)
+        # return bool value: self._joined
+        self.joined = self._join(known_addr_list, wait_time=wait_time)
+        return self.joined
 
     def _join(self, known_addr_list, codec="utf-8", wait_time=15):
         assert type(known_addr_list) == list

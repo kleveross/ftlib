@@ -136,6 +136,9 @@ class BasicFTLib:
     def manual_join(self, *args, **kwargs):
         return self.consensus.manual_join(*args, **kwargs)
 
+    def consensus_joined(self):
+        return self.consensus.joined
+
     # TODO: execute still under development
     def execute(self, func, *args, **kwargs):
         # Args:
