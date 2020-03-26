@@ -46,10 +46,11 @@ class Gossip(BasicConsensus):
         if res != 0:
             raise RuntimeError("failed to initialize memberlist")
 
+        self.joined = False
         if known_addr_list is not None and known_addr_list != []:
-            joined = self._join(known_addr_list=known_addr_list)
-            if not joined:
-                raise RuntimeError("failed to join the group")
+            self.joined = self._join(known_addr_list=known_addr_list)
+            if not self.joined:
+                logging.warning("failed to join the group")
 
         # we need to take a sleep here because the group may add further nodes
         # after this node succeeded joining the group
@@ -79,7 +80,12 @@ class Gossip(BasicConsensus):
     def passive_or_active(self):
         return ConsensusMode.ACTIVE
 
-    def _join(self, known_addr_list, codec="utf-8"):
+    def manual_join(self, known_addr_list, wait_time=15):
+        # return bool value: self._joined
+        self.joined = self._join(known_addr_list, wait_time=wait_time)
+        return self.joined
+
+    def _join(self, known_addr_list, codec="utf-8", wait_time=15):
         assert type(known_addr_list) == list
 
         addr_list_len = len(known_addr_list)
@@ -98,7 +104,7 @@ class Gossip(BasicConsensus):
         # TODO: waiting for 15 sec is not an optimal choice
         #  it will better to set 15 sec as max_timeout, and
         #  the stop condition is
-        time.sleep(15)
+        time.sleep(wait_time)
         res = self._lib.join(t)
 
         return res > 0
