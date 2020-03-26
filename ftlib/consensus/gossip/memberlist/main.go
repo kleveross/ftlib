@@ -34,6 +34,7 @@ func init_memberlist(
     logFileName := C.GoString(cLogFileName)
     customBindAddr := C.GoString(cBindAddr)
     customAdvertiseAddr := C.GoString(cAdvertiseAddr)
+    customTCPTimeout := time.Duration(int64(cTCPTimeout))
 
     if customBindAddr != "" {
         config.BindAddr = customBindAddr
@@ -43,8 +44,8 @@ func init_memberlist(
         config.AdvertiseAddr = customAdvertiseAddr
     }
 
-    if cTCPTimeout > 0 {
-        config.TCPTimeout = cTCPTimeout * time.Second
+    if int64(cTCPTimeout) > 0 {
+        config.TCPTimeout = customTCPTimeout * time.Second
     }
 
     if logFileName != "" {
