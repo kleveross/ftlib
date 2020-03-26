@@ -133,6 +133,9 @@ class BasicFTLib:
             self.commlib.abort_communicator()
             self.consensus.average_failure()
 
+    def manual_join(self, *args, **kwargs):
+        return self.consensus.manual_join(*args, **kwargs)
+
     # TODO: execute still under development
     def execute(self, func, *args, **kwargs):
         # Args:

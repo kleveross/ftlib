@@ -37,14 +37,17 @@ func init_memberlist(
     customTCPTimeout := time.Duration(int64(cTCPTimeout))
 
     if customBindAddr != "" {
+        fmt.Printf("Setting Bind Address as %s\n", customBindAddr)
         config.BindAddr = customBindAddr
     }
 
     if customAdvertiseAddr != "" {
+        fmt.Printf("Setting Advertise Address as %s\n", customAdvertiseAddr)
         config.AdvertiseAddr = customAdvertiseAddr
     }
 
     if int64(cTCPTimeout) > 0 {
+        fmt.Printf("Setting TCPTimeout as %d\n", int64(cTCPTimeout))
         config.TCPTimeout = customTCPTimeout * time.Second
     }
 
@@ -75,7 +78,7 @@ func join(ns []*C.char) C.int {
     }
     n, err := list.Join(addrList)
     if err != nil {
-        panic("Failed to join cluster: " + err.Error())
+        fmt.Print("Failed to join cluster: " + err.Error())
         return 0
     }
     return C.int(n)
