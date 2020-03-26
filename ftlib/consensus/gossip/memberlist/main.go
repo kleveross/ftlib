@@ -12,6 +12,7 @@ import (
     "fmt"
     "github.com/hashicorp/memberlist"
     "os"
+    "time"
 )
 
 var list *memberlist.Memberlist
@@ -25,6 +26,7 @@ func init_memberlist(
     cLogFileName *C.char,
     cBindAddr *C.char,
     cAdvertiseAddr *C.char,
+    cTCPTimeout C.int,
     ) C.int {
     var err error
     config := memberlist.DefaultLocalConfig()
@@ -39,6 +41,10 @@ func init_memberlist(
 
     if customAdvertiseAddr != "" {
         config.AdvertiseAddr = customAdvertiseAddr
+    }
+
+    if cTCPTimeout > 0 {
+        config.TCPTimeout = cTCPTimeout * time.Second
     }
 
     if logFileName != "" {

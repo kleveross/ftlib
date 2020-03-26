@@ -20,6 +20,8 @@ class Gossip(BasicConsensus):
         log_file="/tmp/memberlist.log",
         custom_bind_addr="",
         custom_advertise_addr="",
+        custom_tcp_timeout=0,
+        wait_time_after_join=5,
     ):
         super(Gossip, self).__init__()
 
@@ -39,6 +41,7 @@ class Gossip(BasicConsensus):
             log_file.encode("utf-8"),
             custom_bind_addr.encode("utf-8"),
             custom_advertise_addr.encode("utf-8"),
+            custom_tcp_timeout,
         )
         if res != 0:
             raise RuntimeError("failed to initialize memberlist")
@@ -48,7 +51,9 @@ class Gossip(BasicConsensus):
             if not joined:
                 raise RuntimeError("failed to join the group")
 
-        time.sleep(5)
+        # we need to take a sleep here because the group may add further nodes
+        # after this node succeeded joining the group
+        time.sleep(wait_time_after_join)
 
         self._ml_changed = False
         self._cache = self.get_memberlist()
