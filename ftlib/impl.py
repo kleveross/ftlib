@@ -46,7 +46,7 @@ class BasicFTLib:
 
         self.rank = None
         self.size = None
-        self.member_list = None
+        self.member_list = []
 
         self.consensus = None
         self.commlib = None
