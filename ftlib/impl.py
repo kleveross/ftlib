@@ -3,7 +3,7 @@ import threading
 import time
 
 from ftlib.consensus.consensus_status import ConsensusMode, ConsensusStatus
-from ftlib.ftlib_status import FTAllReduceStatus, FTRebuildStatus
+from ftlib.ftlib_status import FTCollectiveStatus, FTRebuildStatus
 from ftlib.rank_assign_scheme import get_rank_size
 
 # in the ftlib package, user is able to initialize the package
@@ -161,7 +161,7 @@ class BasicFTLib:
             # TODO: we should consider retrying rebuild process
             #  for multiple times
             rebuild_result = self._rebuild()
-            if rebuild_result != FTAllReduceStatus.SUCCESS:
+            if rebuild_result != FTCollectiveStatus.SUCCESS:
                 if rebuild_result == FTRebuildStatus.FAIL:
                     raise Exception("rebuild process returns failed")
                 elif rebuild_result == FTRebuildStatus.ABORT:
@@ -317,8 +317,7 @@ class BasicFTLib:
             #     **kwargs, kwargs passed to the function
             # Returns:
             #     if collective ops returns successfully, returns the value
-            #     otherwise, returns FTAllReduceStatus
-            #     TODO: rename FTAllReduceStatus to FTCollectiveStatus
+            #     otherwise, returns FTCollectiveStatus
 
             # the api here is
             ops = (
@@ -330,7 +329,7 @@ class BasicFTLib:
             # if skil_allreduce == True, then any collective ops
             # shouldn't be called
             if self.skip_allreduce():
-                return FTAllReduceStatus.NO_NEED
+                return FTCollectiveStatus.NO_NEED, None
 
             # if the instance is not initialized, then start rebuild
             # TODO: put rebuild into a try loop?
@@ -341,13 +340,13 @@ class BasicFTLib:
                 rebuild_result = self._rebuild()
                 if rebuild_result == FTRebuildStatus.ABORT:
                     logging.warning("rebuild process returns abort")
-                    return FTAllReduceStatus.ABORT
+                    return FTCollectiveStatus.ABORT, None
                 if rebuild_result == FTRebuildStatus.FAIL:
                     logging.warning("rebuild process returns fail")
-                    return FTAllReduceStatus.ABORT
+                    return FTCollectiveStatus.ABORT, None
                 if rebuild_result == FTRebuildStatus.SKIP_ALLREDUCE:
                     logging.warning("rebuild process returns skip allreduce")
-                    return FTAllReduceStatus.NO_NEED
+                    return FTCollectiveStatus.NO_NEED, None
 
             try:
                 self.lock()
@@ -366,10 +365,10 @@ class BasicFTLib:
             except Exception as e:
                 logging.exception(str(e))
                 self.set_initialized(False)
-                return FTAllReduceStatus.FAIL
+                return FTCollectiveStatus.FAIL, None
             else:
                 self.consensus.average_success()
-                return result
+                return FTCollectiveStatus.SUCCESS, result
             finally:
                 self.unlock()
 
