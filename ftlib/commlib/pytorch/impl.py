@@ -24,18 +24,28 @@ class PyTorch(BasicCommLib):
 
     @BasicCommLib.register_api
     def grad_sync_done(self, *args, **kwargs):
-        model = None
-        if "model" in kwargs.keys():
-            model = kwargs["model"]
-        elif len(args) > 0:
-            model = args[0]
-        if model is None:
+        # it is required to pass args with keys
+        if "model" not in kwargs.keys() and "params" not in kwargs.keys():
             return CommLibStatus.FAIL
+
+        params = (
+            kwargs["model"].parameters()
+            if "model" in kwargs.keys()
+            else kwargs["params"]
+        )
+
+        get_data = (
+            (lambda x: x.grad.data)
+            if "model" in kwargs.keys()
+            else (lambda x: torch.from_numpy(x))
+        )
+
         try:
             size = float(dist.get_world_size())
-            for param in model.parameters():
-                dist.all_reduce(param.grad.data, op=dist.reduce_op.SUM)
-                param.grad.data /= size
+            for param in params:
+                data = get_data(param)
+                dist.all_reduce(data, op=dist.reduce_op.SUM)
+                data /= size
         except Exception as e:
             logging.error(str(e))
             return CommLibStatus.FAIL
