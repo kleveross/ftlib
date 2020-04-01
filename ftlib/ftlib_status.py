@@ -1,7 +1,7 @@
 from enum import Enum
 
 
-class FTAllReduceStatus(Enum):
+class FTCollectiveStatus(Enum):
     NO_NEED = -1
     ABORT = 2
     FAIL = 1
