@@ -13,7 +13,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import StepLR
 
 from ftlib import BasicFTLib
-from ftlib.ftlib_status import FTAllReduceStatus
+from ftlib.ftlib_status import FTCollectiveStatus
 
 root_dir = os.path.join(os.path.dirname(__file__), os.path.pardir)
 sys.path.insert(0, os.path.abspath(root_dir))
@@ -106,15 +106,15 @@ if __name__ == "__main__":
                 continue
             else:
                 res = ftlib.wait_gradients_ready(model)
-            if res == FTAllReduceStatus.NO_NEED:
+            if res == FTCollectiveStatus.NO_NEED:
                 logging.critical(
                     "cannot use average_gradient when there is no need"
                 )
                 exit(2)
-            if res == FTAllReduceStatus.SUCCESS:
+            if res == FTCollectiveStatus.SUCCESS:
                 logging.info("average succeed")
                 optimizer.step()
-            if res == FTAllReduceStatus.ABORT:
+            if res == FTCollectiveStatus.ABORT:
                 logging.info("average failed, abort")
                 continue
         scheduler.step()

@@ -10,11 +10,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from data import TrickySampler
 from torch.optim.lr_scheduler import StepLR
 
 from ftlib import BasicFTLib
-from ftlib.ftlib_status import FTAllReduceStatus
+from ftlib.ftlib_status import FTCollectiveStatus
+
+from .data import TrickySampler
 
 LOGLEVEL = os.environ.get("LOGLEVEL", "WARNING").upper()
 logging.basicConfig(level=LOGLEVEL)
@@ -145,15 +146,15 @@ if __name__ == "__main__":
                 continue
             else:
                 res = ftlib.wait_gradients_ready(model)
-            if res == FTAllReduceStatus.NO_NEED:
+            if res == FTCollectiveStatus.NO_NEED:
                 logging.critical(
                     "cannot use average_gradient when there is no need"
                 )
                 exit(2)
-            elif res == FTAllReduceStatus.SUCCESS:
+            elif res == FTCollectiveStatus.SUCCESS:
                 logging.info("average succeed")
                 optimizer.step()
-            elif res == FTAllReduceStatus.ABORT:
+            elif res == FTCollectiveStatus.ABORT:
                 logging.info("average failed, abort")
                 continue
             else:
