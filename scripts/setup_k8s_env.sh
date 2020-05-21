@@ -12,6 +12,6 @@ curl -Lo kubectl https://storage.googleapis.com/kubernetes-release/release/v${K8
 curl -Lo minikube https://storage.googleapis.com/minikube/releases/v${MINIKUBE_VERSION}/minikube-linux-amd64 && chmod +x minikube && sudo mv minikube /usr/local/bin/
 mkdir -p $HOME/.kube $HOME/.minikube
 touch ${KUBECONFIG}
-sudo minikube start --vm-driver=none --kubernetes-version=v${K8S_VERSION} --cpus 2 --memory 6144
+sudo minikube start --vm-driver=none --kubernetes-version=v${K8S_VERSION}
 sudo chown -R travis: $HOME/.minikube/
 kubectl cluster-info
