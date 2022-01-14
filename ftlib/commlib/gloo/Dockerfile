@@ -9,7 +9,7 @@ ENV PATH=/root/miniconda3/bin:${PATH}
 
 RUN conda init bash && echo "auto_activate_base: true" > ~/.condarc
 
-RUN pip install pytest pybind11==2.4.3 numpy
+RUN pip install --no-cache-dir pytest pybind11==2.4.3 numpy
 
 RUN wget -O /usr/share/cmake-3.10/Modules/FindNCCL.cmake https://raw.githubusercontent.com/BVLC/caffe/master/cmake/Modules/FindNCCL.cmake
 
